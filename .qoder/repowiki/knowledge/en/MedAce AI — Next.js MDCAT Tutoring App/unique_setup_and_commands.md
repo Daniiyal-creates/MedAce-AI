@@ -1,1 +1,0 @@
-Requires environment variables `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and Gemini/OpenAI keys loaded via `.env.local`. Run `npm run dev` for development, `npm run build` for production builds, and `npx drizzle-kit generate` / `npx drizzle-kit migrate` using `drizzle.config.ts` against the Postgres database.

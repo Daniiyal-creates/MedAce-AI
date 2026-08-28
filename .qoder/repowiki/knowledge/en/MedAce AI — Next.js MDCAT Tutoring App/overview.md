@@ -1,1 +1,0 @@
-A Next.js 15 App Router web application that generates Urdu-language MDCAT quiz questions via Google Gemini, tracks student weak topics, and produces adaptive study plans backed by Supabase and Drizzle ORM.
