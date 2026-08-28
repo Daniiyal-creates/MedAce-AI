@@ -1,0 +1,6 @@
+- Route groups `(auth)` and `(dashboard)` are used to segment public vs. protected routes, each with its own `layout.tsx` for shared chrome.
+- Server API endpoints follow a uniform pattern: parse JSON body, validate required fields, call a `@/lib/*` function, and return `NextResponse.json` with success or error payloads in Urdu.
+- Cross-cutting concerns (auth session, query caching) are injected via React context providers (`AuthProvider`, `QueryProvider`) wrapped around the root layout rather than per-page setup.
+- Domain logic is isolated from routes into `src/lib/` subdirectories (`supabase`, `gemini`, `drizzle`, `hooks`) so API routes act as thin adapters over reusable services.
+- UI is built from composable primitives in `src/components/ui/` (Button, Card, Input, Modal, etc.) consumed by feature-specific components instead of inline styles.
+- All user-facing strings and error messages are written in Urdu, including API error responses and page metadata.
