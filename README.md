@@ -1,2 +1,0 @@
-# MedAce-AI
-Alibaba Hackathon
