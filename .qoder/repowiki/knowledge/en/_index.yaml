@@ -1,0 +1,24 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: en-US
+branch: daniyal-v1
+nodes_managed: true
+exported_at: "2026-08-30T10:03:15Z"
+modules:
+    "":
+        dir_name: MedAce AI Next.js Application Root
+        title: MedAce AI Next.js Application Root
+        scope:
+            - README.md
+            - .gitignore
+            - package.json
+            - package-lock.json
+            - next.config.ts
+            - tsconfig.json
+            - eslint.config.mjs
+            - postcss.config.mjs
+            - .env.example
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []

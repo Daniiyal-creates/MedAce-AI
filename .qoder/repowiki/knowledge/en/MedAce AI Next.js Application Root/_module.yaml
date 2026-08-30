@@ -1,0 +1,16 @@
+schema_version: 1
+module_path: ""
+title: MedAce AI Next.js Application Root
+scope:
+    - README.md
+    - .gitignore
+    - package.json
+    - package-lock.json
+    - next.config.ts
+    - tsconfig.json
+    - eslint.config.mjs
+    - postcss.config.mjs
+    - .env.example
+source_files: []
+depends_on: []
+related_to: []

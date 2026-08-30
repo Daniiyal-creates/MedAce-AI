@@ -1,0 +1,3 @@
+- Environment variables are prefixed with `NEXT_PUBLIC_` for client-exposed values (Supabase URL/anon key, app URL) and kept secret for server-only keys (service role, database URL, Gemini API key).
+- Security-sensitive HTTP responses are hardened globally through a centralized `securityHeaders` array applied via Next.js `headers()` config rather than per-route middleware.
+- TypeScript is configured strictly with `noEmit` and `isolatedModules`, relying on Next's built-in compilation and using the `@/*` path alias to resolve imports from `src/`.
