@@ -9,6 +9,7 @@ import { getQuestionsForChapter, parseChapterNumber } from "@/lib/chapter-questi
 import { submitQuiz } from "@/lib/api-client";
 import { saveQuizToLocalHistory } from "@/lib/progress-tracker";
 import type { Question, QuizSession, UserAnswer } from "@/types/quiz";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
   ChevronLeft,
@@ -244,7 +245,15 @@ export default function QuizPlayerPage() {
       {/* Question Area */}
       <main className="flex-1 mx-auto max-w-3xl w-full px-4 py-8">
         {/* Question Card */}
-        <div className="mb-8 animate-fade-in" key={question.id}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={question.id}
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -30 }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="mb-8"
+          >
           <div className="flex items-center gap-2 mb-4">
             <Badge variant="default">
               Q{currentIdx + 1} of {totalQ}
@@ -292,13 +301,19 @@ export default function QuizPlayerPage() {
               </div>
             )}
           </div>
-        </div>
+          </motion.div>
+        </AnimatePresence>
 
         {/* Options */}
         <div className="space-y-3 mb-8">
           {optionLetters.map((letter, i) => (
-            <button
+            <motion.button
               key={letter}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.05 }}
+              whileHover={!isAnswered ? { scale: 1.02 } : undefined}
+              whileTap={!isAnswered ? { scale: 0.98 } : undefined}
               onClick={() => handleSelect(letter)}
               disabled={isAnswered}
               className={cn(
@@ -330,7 +345,7 @@ export default function QuizPlayerPage() {
               </span>
 
               <span className="text-sm">{optionTexts[i]}</span>
-            </button>
+            </motion.button>
           ))}
         </div>
 
@@ -362,21 +377,23 @@ export default function QuizPlayerPage() {
             {questions.map((q, i) => {
               const a = answers[q.id];
               return (
-                <button
+                <motion.button
                   key={q.id}
                   onClick={() => setCurrentIdx(i)}
-                  className={cn(
-                    "h-2.5 w-2.5 shrink-0 rounded-full transition-colors cursor-pointer",
-                    i === currentIdx
-                      ? "ring-2 ring-primary ring-offset-2 ring-offset-bg bg-primary"
+                  animate={{
+                    scale: i === currentIdx ? 1.4 : 1,
+                    backgroundColor: i === currentIdx
+                      ? "var(--color-primary)"
                       : a?.submitted
                       ? a.selected === q.correctAnswer
-                        ? "bg-success"
-                        : "bg-error"
+                        ? "var(--color-success)"
+                        : "var(--color-error)"
                       : a?.selected
-                      ? "bg-primary/50"
-                      : "bg-border"
-                  )}
+                      ? "rgba(20, 184, 166, 0.5)"
+                      : "var(--color-border)",
+                  }}
+                  className="h-2.5 w-2.5 shrink-0 rounded-full cursor-pointer"
+                  transition={{ type: "spring", damping: 20, stiffness: 300 }}
                   aria-label={`Question ${i + 1}`}
                 />
               );

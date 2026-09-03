@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, Badge, Button, Progress, Input, Modal, Select, Tabs } from "@/components/ui";
 import { Search, AlertTriangle, Sparkles, Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
 import { mockTopics } from "@/lib/mock-data";
 import { generateQuiz, getDashboardStats } from "@/lib/api-client";
 import { calculateProgressStats } from "@/lib/progress-tracker";
@@ -125,17 +126,24 @@ export default function PracticePage() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         className="mb-6"
+        variant="pill"
       />
 
       {/* Topic Grid */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((topic) => (
-          <Card
+        {filtered.map((topic, i) => (
+          <motion.div
             key={topic.id}
-            padding="md"
-            className="cursor-pointer hover:border-primary/20 group transition-all"
-            onClick={() => setSelectedTopic(topic)}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.04, type: "spring", damping: 20, stiffness: 200 }}
           >
+            <Card
+              hoverable
+              padding="md"
+              className="cursor-pointer group transition-all h-full"
+              onClick={() => setSelectedTopic(topic)}
+            >
             <div className="flex items-center gap-2 mb-3">
               <Badge variant="default">Ch {topic.chapterNum}</Badge>
               {topic.isWeak && (
@@ -169,6 +177,7 @@ export default function PracticePage() {
                   }
                   size="sm"
                   className="flex-1"
+                  glow
                 />
                 <span className="text-xs text-muted shrink-0">
                   {topic.accuracy}%
@@ -178,6 +187,7 @@ export default function PracticePage() {
               <p className="text-xs text-muted italic">Not yet attempted</p>
             )}
           </Card>
+          </motion.div>
         ))}
       </div>
 

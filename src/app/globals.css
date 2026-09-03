@@ -30,6 +30,11 @@
   --color-muted: #94a3b8;
   --color-border: #1e293b;
 
+  /* Glass & Glow */
+  --color-glass: rgba(17, 24, 39, 0.6);
+  --color-glow-primary: rgba(20, 184, 166, 0.3);
+  --color-glow-accent: rgba(139, 92, 246, 0.3);
+
   /* Fonts */
   --font-sans: "Inter", "Segoe UI", system-ui, sans-serif;
   --font-urdu: "Noto Nastaliq Urdu", "Noto Sans Arabic", "Segoe UI", sans-serif;
@@ -93,7 +98,7 @@
     line-height: 1.2;
   }
 
-  /* Custom scrollbar for dark theme */
+  /* Custom scrollbar with gradient thumb */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -104,12 +109,12 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: var(--color-border);
+    background: linear-gradient(180deg, var(--color-primary), var(--color-accent));
     border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-muted);
+    background: linear-gradient(180deg, var(--color-primary-light), var(--color-accent-light));
   }
 
   /* Dark mode dropdown select option styling */
@@ -143,10 +148,63 @@
   }
 
   .glass-card {
-    background-color: var(--color-surface);
+    background-color: var(--color-glass);
     border: 1px solid var(--color-border);
     border-radius: 0.75rem;
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(16px);
+  }
+
+  .glass-nav {
+    background-color: rgba(17, 24, 39, 0.7);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  .gradient-border {
+    position: relative;
+  }
+
+  .gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    -webkit-mask-composite: xor;
+    pointer-events: none;
+  }
+
+  .gradient-mesh {
+    background-image:
+      radial-gradient(ellipse at 20% 50%, var(--color-glow-primary) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, var(--color-glow-accent) 0%, transparent 50%),
+      radial-gradient(ellipse at 40% 80%, rgba(59, 130, 246, 0.15) 0%, transparent 50%);
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--color-border) 0%,
+      var(--color-surface-hover) 50%,
+      var(--color-border) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 20px var(--color-glow-primary), 0 0 60px rgba(20, 184, 166, 0.1);
+  }
+
+  .glow-accent {
+    box-shadow: 0 0 20px var(--color-glow-accent), 0 0 60px rgba(139, 92, 246, 0.1);
+  }
+
+  .text-glow-primary {
+    text-shadow: 0 0 20px var(--color-glow-primary);
   }
 
   .animate-fade-in {
@@ -160,35 +218,82 @@
   .animate-slide-down {
     animation: slideDown 0.2s ease-out;
   }
+
+  .animate-gradient-border {
+    animation: gradientBorder 3s linear infinite;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite;
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
 
+/* ===========================
+   KEYFRAMES
+   =========================== */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes gradientBorder {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 10px var(--color-glow-primary); }
+  50% { box-shadow: 0 0 25px var(--color-glow-primary), 0 0 50px rgba(20, 184, 166, 0.15); }
+}
+
+@keyframes tickerScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes drawLine {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, Badge, Button, Input, Modal, Select } from "@/components/ui";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import {
   Sparkles,
   CheckCircle,
@@ -142,8 +143,11 @@ export default function StudyPlanPage() {
             const isSelected = idx === selectedDayIdx;
 
             return (
-              <button
+              <motion.button
                 key={day.day}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05, type: "spring", damping: 20 }}
                 onClick={() => setSelectedDayIdx(idx)}
                 className={cn(
                   "flex flex-col text-left rounded-xl border p-3 transition-all cursor-pointer",
@@ -189,7 +193,7 @@ export default function StudyPlanPage() {
                   <Clock className="h-3 w-3" />
                   {day.estimatedMinutes} mins
                 </div>
-              </button>
+              </motion.button>
             );
           })}
         </div>

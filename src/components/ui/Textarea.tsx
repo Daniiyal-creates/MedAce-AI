@@ -1,3 +1,5 @@
+"use client";
+
 import { TextareaHTMLAttributes, forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +17,7 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         {label && (
           <label
             htmlFor={textareaId}
-            className="block text-sm font-medium text-muted"
+            className="block text-sm font-medium text-muted transition-colors"
           >
             {label}
           </label>
@@ -24,8 +26,8 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           id={textareaId}
           className={cn(
-            "w-full rounded-lg bg-surface border px-4 py-2.5 text-sm text-text placeholder:text-muted/60 transition-colors duration-200 resize-y min-h-[80px]",
-            "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary",
+            "w-full rounded-lg bg-surface border px-4 py-2.5 text-sm text-text placeholder:text-muted/60 transition-all duration-300 resize-y min-h-[80px]",
+            "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary focus:shadow-[0_0_15px_rgba(20,184,166,0.1)]",
             error
               ? "border-error focus:ring-error/30 focus:border-error"
               : "border-border",

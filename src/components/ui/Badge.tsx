@@ -1,5 +1,8 @@
+"use client";
+
 import { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 type BadgeVariant = "default" | "success" | "error" | "warning" | "info" | "ai";
 
@@ -18,16 +21,20 @@ const variantClasses: Record<BadgeVariant, string> = {
 
 function Badge({ className, variant = "default", children, ...props }: BadgeProps) {
   return (
-    <span
+    <motion.span
+      initial={{ scale: 0.85, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ type: "spring", damping: 20, stiffness: 300 }}
       className={cn(
         "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium",
-        variantClasses[variant],
+        variant === "ai" && "bg-gradient-to-r from-accent/15 to-primary/15 border border-accent/20",
+        variant !== "ai" && variantClasses[variant],
         className
       )}
       {...props}
     >
       {children}
-    </span>
+    </motion.span>
   );
 }
 

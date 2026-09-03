@@ -8,6 +8,7 @@ import {
   ReactNode,
 } from "react";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 import { X, CheckCircle, AlertCircle, Info } from "lucide-react";
 
 type ToastType = "success" | "error" | "info";
@@ -61,25 +62,41 @@ function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ toast }}>
       {children}
       <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={cn(
-              "flex items-center gap-3 rounded-lg bg-surface border px-4 py-3 shadow-lg shadow-black/30 animate-slide-up min-w-[280px] max-w-[400px]",
-              borderColors[t.type]
-            )}
-          >
-            {icons[t.type]}
-            <p className="flex-1 text-sm text-text">{t.message}</p>
-            <button
-              onClick={() => dismiss(t.id)}
-              className="text-muted hover:text-text transition-colors cursor-pointer"
-              aria-label="Dismiss"
+        <AnimatePresence>
+          {toasts.map((t) => (
+            <motion.div
+              key={t.id}
+              initial={{ opacity: 0, x: 100, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 100, scale: 0.95 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className={cn(
+                "flex items-center gap-3 rounded-lg bg-surface border px-4 py-3 shadow-lg shadow-black/30 min-w-[280px] max-w-[400px] relative overflow-hidden",
+                borderColors[t.type]
+              )}
             >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        ))}
+              {icons[t.type]}
+              <p className="flex-1 text-sm text-text">{t.message}</p>
+              <button
+                onClick={() => dismiss(t.id)}
+                className="text-muted hover:text-text transition-colors cursor-pointer"
+                aria-label="Dismiss"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              {/* Auto-dismiss progress bar */}
+              <motion.div
+                initial={{ width: "100%" }}
+                animate={{ width: "0%" }}
+                transition={{ duration: 4, ease: "linear" }}
+                className={cn(
+                  "absolute bottom-0 left-0 h-0.5",
+                  t.type === "success" ? "bg-success" : t.type === "error" ? "bg-error" : "bg-info"
+                )}
+              />
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </ToastContext.Provider>
   );

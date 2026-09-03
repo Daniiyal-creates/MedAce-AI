@@ -11,7 +11,7 @@ function Skeleton({ className, variant = "text", lines = 1 }: SkeletonProps) {
     return (
       <div
         className={cn(
-          "rounded-full bg-border animate-pulse",
+          "rounded-full shimmer",
           className || "h-10 w-10"
         )}
       />
@@ -22,7 +22,7 @@ function Skeleton({ className, variant = "text", lines = 1 }: SkeletonProps) {
     return (
       <div
         className={cn(
-          "rounded-xl bg-surface border border-border animate-pulse",
+          "rounded-xl shimmer",
           className || "h-32 w-full"
         )}
       />
@@ -35,7 +35,7 @@ function Skeleton({ className, variant = "text", lines = 1 }: SkeletonProps) {
         <div
           key={i}
           className={cn(
-            "h-4 rounded bg-border animate-pulse",
+            "h-4 rounded shimmer",
             i === lines - 1 ? "w-3/4" : "w-full",
             className
           )}

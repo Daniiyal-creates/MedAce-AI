@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, Badge, Button, Tabs } from "@/components/ui";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import {
   CheckCircle,
   XCircle,
@@ -124,7 +125,7 @@ export default function ResultsPage() {
               strokeWidth="8"
               className="text-border"
             />
-            <circle
+            <motion.circle
               cx="60"
               cy="60"
               r="52"
@@ -134,12 +135,20 @@ export default function ResultsPage() {
               strokeLinecap="round"
               strokeDasharray={`${(pct / 100) * 327} 327`}
               className={pct >= 70 ? "text-success" : pct >= 40 ? "text-warning" : "text-error"}
+              initial={{ strokeDashoffset: 327 }}
+              animate={{ strokeDashoffset: 0 }}
+              transition={{ duration: 1.5, ease: "easeOut", delay: 0.3 }}
             />
           </svg>
           <div className="absolute text-center">
-            <p className={cn("text-3xl font-bold", getScoreColor(pct))}>
+            <motion.p
+              className={cn("text-3xl font-bold", getScoreColor(pct))}
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.8, type: "spring", damping: 15 }}
+            >
               {score}/{totalQuestions}
-            </p>
+            </motion.p>
             <p className="text-xs text-muted">{pct}%</p>
           </div>
         </div>
@@ -159,21 +168,24 @@ export default function ResultsPage() {
 
       {/* Stats Row */}
       <div className="grid grid-cols-3 gap-4 mb-8">
-        <Card padding="md" className="text-center">
-          <CheckCircle className="h-5 w-5 text-success mx-auto mb-1" />
-          <p className="text-xl font-bold text-success">{correctCount}</p>
-          <p className="text-xs text-muted">Correct</p>
-        </Card>
-        <Card padding="md" className="text-center">
-          <XCircle className="h-5 w-5 text-error mx-auto mb-1" />
-          <p className="text-xl font-bold text-error">{wrongCount}</p>
-          <p className="text-xs text-muted">Wrong</p>
-        </Card>
-        <Card padding="md" className="text-center">
-          <Clock className="h-5 w-5 text-muted mx-auto mb-1" />
-          <p className="text-xl font-bold">{avgTime}s</p>
-          <p className="text-xs text-muted">Avg. Time</p>
-        </Card>
+        {[
+          { icon: CheckCircle, value: correctCount, label: "Correct", color: "text-success" },
+          { icon: XCircle, value: wrongCount, label: "Wrong", color: "text-error" },
+          { icon: Clock, value: `${avgTime}s`, label: "Avg. Time", color: "text-muted" },
+        ].map((stat, i) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 + i * 0.1, type: "spring", damping: 20 }}
+          >
+            <Card padding="md" className="text-center">
+              <stat.icon className={`h-5 w-5 ${stat.color} mx-auto mb-1`} />
+              <p className={`text-xl font-bold ${stat.color}`}>{stat.value}</p>
+              <p className="text-xs text-muted">{stat.label}</p>
+            </Card>
+          </motion.div>
+        ))}
       </div>
 
       {/* Performance Summary Card */}

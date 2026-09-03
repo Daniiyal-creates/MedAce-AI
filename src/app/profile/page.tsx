@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, Badge, Button, Input, Modal, Avatar } from "@/components/ui";
+import { motion } from "framer-motion";
 import {
   BookOpen,
   Target,
@@ -85,7 +86,12 @@ export default function ProfilePage() {
   return (
     <AppLayout userName={fullName}>
       {/* Profile Header */}
-      <Card padding="lg" className="mb-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", damping: 20 }}
+      >
+        <Card padding="lg" className="mb-8">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
           <Avatar name={fullName} size="lg" />
           <div className="text-center sm:text-left flex-1">
@@ -124,6 +130,7 @@ export default function ProfilePage() {
           </div>
         )}
       </Card>
+      </motion.div>
 
       {/* Edit Profile Form */}
       {isEditing && (
@@ -164,59 +171,33 @@ export default function ProfilePage() {
       <div className="mb-8">
         <h2 className="text-lg font-semibold mb-4">Overall Statistics</h2>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-          <Card padding="md">
-            <div className="flex items-center gap-2 mb-2">
-              <BookOpen className="h-4 w-4 text-primary" />
-              <span className="text-xs text-muted">Questions Attempted</span>
-            </div>
-            <p className="text-2xl font-bold">{stats.totalQuestions}</p>
-          </Card>
-          <Card padding="md">
-            <div className="flex items-center gap-2 mb-2">
-              <Target className="h-4 w-4 text-info" />
-              <span className="text-xs text-muted">Sessions Completed</span>
-            </div>
-            <p className="text-2xl font-bold">{stats.sessionsCompleted}</p>
-          </Card>
-          <Card padding="md">
-            <div className="flex items-center gap-2 mb-2">
-              <Trophy className="h-4 w-4 text-success" />
-              <span className="text-xs text-muted">Overall Accuracy</span>
-            </div>
-            <p
-              className={cn(
-                "text-2xl font-bold",
-                stats.accuracyRate >= 70
-                  ? "text-success"
-                  : stats.accuracyRate >= 40
-                  ? "text-warning"
-                  : "text-error"
-              )}
+          {[
+            { icon: BookOpen, label: "Questions Attempted", value: stats.totalQuestions.toString(), color: "text-primary" },
+            { icon: Target, label: "Sessions Completed", value: stats.sessionsCompleted.toString(), color: "text-info" },
+            { icon: Trophy, label: "Overall Accuracy", value: `${stats.accuracyRate}%`, color: stats.accuracyRate >= 70 ? "text-success" : stats.accuracyRate >= 40 ? "text-warning" : "text-error" },
+            { icon: Trophy, label: "Best Topic", value: bestTopic, color: "text-success", small: true },
+            { icon: TrendingDown, label: "Needs Work", value: worstTopic, color: "text-error", small: true },
+            { icon: Flame, label: "Study Streak", value: `${stats.studyStreak} days`, color: "text-warning" },
+          ].map((stat, i) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.08, type: "spring", damping: 20 }}
             >
-              {stats.accuracyRate}%
-            </p>
-          </Card>
-          <Card padding="md">
-            <div className="flex items-center gap-2 mb-2">
-              <Trophy className="h-4 w-4 text-success" />
-              <span className="text-xs text-muted">Best Topic</span>
-            </div>
-            <p className="text-sm font-semibold truncate">{bestTopic}</p>
-          </Card>
-          <Card padding="md">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingDown className="h-4 w-4 text-error" />
-              <span className="text-xs text-muted">Needs Work</span>
-            </div>
-            <p className="text-sm font-semibold truncate">{worstTopic}</p>
-          </Card>
-          <Card padding="md">
-            <div className="flex items-center gap-2 mb-2">
-              <Flame className="h-4 w-4 text-warning" />
-              <span className="text-xs text-muted">Study Streak</span>
-            </div>
-            <p className="text-2xl font-bold">{stats.studyStreak} days</p>
-          </Card>
+              <Card hoverable padding="md">
+                <div className="flex items-center gap-2 mb-2">
+                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                  <span className="text-xs text-muted">{stat.label}</span>
+                </div>
+                {stat.small ? (
+                  <p className="text-sm font-semibold truncate">{stat.value}</p>
+                ) : (
+                  <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                )}
+              </Card>
+            </motion.div>
+          ))}
         </div>
       </div>
 
@@ -226,18 +207,26 @@ export default function ProfilePage() {
           <h2 className="text-lg font-semibold mb-4">Performance by Chapter</h2>
           <Card padding="md">
             <div className="space-y-3">
-              {chapterPerformance.map((ch) => (
-                <div key={ch.chapter} className="flex items-center gap-3">
+              {chapterPerformance.map((ch, i) => (
+                <motion.div
+                  key={ch.chapter}
+                  className="flex items-center gap-3"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                >
                   <span className="text-xs text-muted w-48 shrink-0 truncate">
                     {ch.chapter}
                   </span>
                   <div className="flex-1 h-5 rounded-full bg-border overflow-hidden">
-                    <div
+                    <motion.div
                       className={cn(
-                        "h-full rounded-full transition-all duration-700",
+                        "h-full rounded-full",
                         getScoreBgColor(ch.accuracy)
                       )}
-                      style={{ width: `${ch.accuracy}%` }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${ch.accuracy}%` }}
+                      transition={{ type: "spring", damping: 30, stiffness: 100, delay: 0.2 + i * 0.03 }}
                     />
                   </div>
                   <span
@@ -252,7 +241,7 @@ export default function ProfilePage() {
                   >
                     {ch.accuracy}%
                   </span>
-                </div>
+                </motion.div>
               ))}
             </div>
           </Card>

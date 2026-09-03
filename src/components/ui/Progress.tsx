@@ -1,4 +1,7 @@
+"use client";
+
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 type ProgressVariant = "primary" | "success" | "error" | "warning";
 
@@ -8,6 +11,7 @@ interface ProgressProps {
   showLabel?: boolean;
   className?: string;
   size?: "sm" | "md" | "lg";
+  glow?: boolean;
 }
 
 const variantClasses: Record<ProgressVariant, string> = {
@@ -15,6 +19,13 @@ const variantClasses: Record<ProgressVariant, string> = {
   success: "bg-success",
   error: "bg-error",
   warning: "bg-warning",
+};
+
+const glowClasses: Record<ProgressVariant, string> = {
+  primary: "shadow-[0_0_8px_var(--color-glow-primary)]",
+  success: "shadow-[0_0_8px_rgba(34,197,94,0.3)]",
+  error: "shadow-[0_0_8px_rgba(239,68,68,0.3)]",
+  warning: "shadow-[0_0_8px_rgba(245,158,11,0.3)]",
 };
 
 const sizeClasses = {
@@ -29,6 +40,7 @@ function Progress({
   showLabel = false,
   className,
   size = "md",
+  glow = false,
 }: ProgressProps) {
   const clamped = Math.min(100, Math.max(0, value));
 
@@ -40,12 +52,15 @@ function Progress({
           sizeClasses[size]
         )}
       >
-        <div
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${clamped}%` }}
+          transition={{ type: "spring", damping: 30, stiffness: 100, delay: 0.1 }}
           className={cn(
-            "h-full rounded-full transition-all duration-500 ease-out",
-            variantClasses[variant]
+            "h-full rounded-full",
+            variantClasses[variant],
+            glow && glowClasses[variant]
           )}
-          style={{ width: `${clamped}%` }}
         />
       </div>
       {showLabel && (
