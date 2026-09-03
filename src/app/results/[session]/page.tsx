@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import AppLayout from "@/components/layout/AppLayout";
-import { Card, Badge, Button, Progress, Tabs } from "@/components/ui";
+import { Card, Badge, Button, Tabs } from "@/components/ui";
 import Link from "next/link";
 import {
   CheckCircle,
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 import { mockCompletedSession } from "@/lib/mock-data";
 import { cn, getScoreColor, formatTime } from "@/lib/utils";
+import type { QuizSession } from "@/types/quiz";
 
 const reviewTabs = [
   { id: "all", label: "All" },
@@ -25,37 +27,85 @@ const reviewTabs = [
   { id: "skipped", label: "Skipped" },
 ];
 
+import { useAuth } from "@/components/auth/AuthProvider";
+
 export default function ResultsPage() {
-  const session = mockCompletedSession;
+  const params = useParams();
+  const { user } = useAuth();
+  const sessionId = (params?.session as string) || "session-done";
+  const userName = user?.fullName || "Medical Student";
+
+  const [session, setSession] = useState<QuizSession>(mockCompletedSession);
   const [activeTab, setActiveTab] = useState("all");
   const [expandedQ, setExpandedQ] = useState<string | null>(null);
   const [showUrdu, setShowUrdu] = useState<string | null>(null);
 
-  const score = session.score ?? 0;
-  const pct = Math.round((score / session.totalQuestions) * 100);
-  const wrong = session.answers.filter((a) => !a.isCorrect).length;
-  const skipped = session.answers.filter((a) => a.selectedAnswer === null).length;
-  const correct = session.answers.filter((a) => a.isCorrect).length;
-  const avgTime = Math.round(
-    session.answers.reduce((sum, a) => sum + a.timeTakenMs, 0) /
-      session.answers.length /
-      1000
-  );
+  // Load results dynamically from sessionStorage or localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedResults =
+        sessionStorage.getItem(`results_${sessionId}`) ||
+        sessionStorage.getItem("latest_results_session") ||
+        localStorage.getItem("latest_results_session");
+
+      if (storedResults) {
+        try {
+          const parsed: QuizSession = JSON.parse(storedResults);
+          if (parsed && Array.isArray(parsed.questions) && parsed.questions.length > 0) {
+            setSession(parsed);
+          }
+        } catch {
+          // fallback to mockCompletedSession
+        }
+      }
+    }
+  }, [sessionId]);
+
+  const questions = session.questions || [];
+  const answers = session.answers || [];
+  const totalQuestions = questions.length > 0 ? questions.length : session.totalQuestions || 10;
+
+  // Calculate exact accuracy & breakdown based directly on submitted answers
+  const correctCount = questions.filter((q) => {
+    const a = answers.find((ans) => ans.questionId === q.id);
+    return a ? a.selectedAnswer === q.correctAnswer : false;
+  }).length;
+
+  const wrongCount = questions.filter((q) => {
+    const a = answers.find((ans) => ans.questionId === q.id);
+    return a ? a.selectedAnswer !== null && a.selectedAnswer !== q.correctAnswer : false;
+  }).length;
+
+  const skippedCount = totalQuestions - (correctCount + wrongCount);
+
+  // Guaranteed mathematical alignment across the entire page
+  const score = correctCount;
+  const pct = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
+
+  const avgTimeMs =
+    answers.length > 0
+      ? answers.reduce((sum, a) => sum + (a.timeTakenMs || 0), 0) / answers.length
+      : 15000;
+  const avgTime = Math.round(avgTimeMs / 1000);
 
   const gradeLabel =
     pct >= 80 ? "Excellent!" : pct >= 60 ? "Good work!" : pct >= 40 ? "Keep going!" : "Needs practice";
 
-  const filteredAnswers = session.questions.filter((q) => {
-    const a = session.answers.find((ans) => ans.questionId === q.id);
+  const filteredQuestions = questions.filter((q) => {
+    const a = answers.find((ans) => ans.questionId === q.id);
+    const isCorrect = a ? a.selectedAnswer === q.correctAnswer : false;
+    const isWrong = a ? a.selectedAnswer !== null && a.selectedAnswer !== q.correctAnswer : false;
+    const isSkipped = !a || a.selectedAnswer === null;
+
     if (activeTab === "all") return true;
-    if (activeTab === "correct") return a?.isCorrect;
-    if (activeTab === "wrong") return a && !a.isCorrect && a.selectedAnswer !== null;
-    if (activeTab === "skipped") return a?.selectedAnswer === null;
+    if (activeTab === "correct") return isCorrect;
+    if (activeTab === "wrong") return isWrong;
+    if (activeTab === "skipped") return isSkipped;
     return true;
   });
 
   return (
-    <AppLayout userName="Ahmed Khan">
+    <AppLayout userName={userName}>
       {/* Score Header */}
       <div className="text-center mb-8 animate-fade-in">
         <Badge variant={pct >= 70 ? "success" : pct >= 40 ? "warning" : "error"} className="mb-3 px-3 py-1">
@@ -88,7 +138,7 @@ export default function ResultsPage() {
           </svg>
           <div className="absolute text-center">
             <p className={cn("text-3xl font-bold", getScoreColor(pct))}>
-              {score}/{session.totalQuestions}
+              {score}/{totalQuestions}
             </p>
             <p className="text-xs text-muted">{pct}%</p>
           </div>
@@ -96,7 +146,7 @@ export default function ResultsPage() {
 
         <h1 className="text-xl font-bold">{session.topic}</h1>
         <p className="text-sm text-muted mt-1">
-          {new Date(session.createdAt).toLocaleDateString("en-US", {
+          {new Date(session.createdAt || Date.now()).toLocaleDateString("en-US", {
             month: "long",
             day: "numeric",
           })}{" "}
@@ -111,12 +161,12 @@ export default function ResultsPage() {
       <div className="grid grid-cols-3 gap-4 mb-8">
         <Card padding="md" className="text-center">
           <CheckCircle className="h-5 w-5 text-success mx-auto mb-1" />
-          <p className="text-xl font-bold text-success">{correct}</p>
+          <p className="text-xl font-bold text-success">{correctCount}</p>
           <p className="text-xs text-muted">Correct</p>
         </Card>
         <Card padding="md" className="text-center">
           <XCircle className="h-5 w-5 text-error mx-auto mb-1" />
-          <p className="text-xl font-bold text-error">{wrong}</p>
+          <p className="text-xl font-bold text-error">{wrongCount}</p>
           <p className="text-xs text-muted">Wrong</p>
         </Card>
         <Card padding="md" className="text-center">
@@ -126,7 +176,7 @@ export default function ResultsPage() {
         </Card>
       </div>
 
-      {/* Weak Spot Update */}
+      {/* Performance Summary Card */}
       <Card padding="md" className="mb-8 border-primary/20">
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -134,15 +184,14 @@ export default function ResultsPage() {
           </div>
           <div>
             <h3 className="text-sm font-semibold mb-1">
-              Your weak spots in Nervous System were updated
+              Session Performance Recorded
             </h3>
             <p className="text-xs text-muted mb-2">
-              Weakness score improved from 85% to 78% after this session.
-              Continue practicing to strengthen this topic further.
+              You answered {correctCount} out of {totalQuestions} questions correctly ({pct}%).
             </p>
             <Link href="/practice">
               <Button variant="ghost" size="sm">
-                Practice Nervous System Again
+                Practice Again
                 <ArrowRight className="h-3 w-3" />
               </Button>
             </Link>
@@ -152,7 +201,7 @@ export default function ResultsPage() {
 
       {/* Question Review */}
       <div className="mb-8">
-        <h2 className="text-lg font-semibold mb-4">Question Review</h2>
+        <h2 className="text-lg font-semibold mb-4">Question Review ({filteredQuestions.length})</h2>
 
         <Tabs
           tabs={reviewTabs}
@@ -162,29 +211,28 @@ export default function ResultsPage() {
         />
 
         <div className="space-y-3">
-          {filteredAnswers.map((q, i) => {
-            const a = session.answers.find((ans) => ans.questionId === q.id);
+          {filteredQuestions.map((q, i) => {
+            const a = answers.find((ans) => ans.questionId === q.id);
             const isExpanded = expandedQ === q.id;
-            const isCorrectAnswer = a?.isCorrect;
+            const isCorrectAnswer = a ? a.selectedAnswer === q.correctAnswer : false;
+            const isSkipped = !a || a.selectedAnswer === null;
 
             return (
               <Card key={q.id} padding="none" className="overflow-hidden">
                 {/* Question header */}
                 <button
-                  onClick={() =>
-                    setExpandedQ(isExpanded ? null : q.id)
-                  }
+                  onClick={() => setExpandedQ(isExpanded ? null : q.id)}
                   className="w-full flex items-center gap-4 px-5 py-3.5 text-left hover:bg-surface-hover transition-colors cursor-pointer"
                 >
                   {isCorrectAnswer ? (
                     <CheckCircle className="h-5 w-5 text-success shrink-0" />
-                  ) : a?.selectedAnswer === null ? (
+                  ) : isSkipped ? (
                     <MinusCircle className="h-5 w-5 text-muted shrink-0" />
                   ) : (
                     <XCircle className="h-5 w-5 text-error shrink-0" />
                   )}
                   <span className="flex-1 text-sm text-text line-clamp-1">
-                    {q.questionText}
+                    {i + 1}. {q.questionText}
                   </span>
                   {isExpanded ? (
                     <ChevronUp className="h-4 w-4 text-muted shrink-0" />

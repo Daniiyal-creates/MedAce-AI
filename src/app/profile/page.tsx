@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, Badge, Button, Input, Modal, Avatar } from "@/components/ui";
 import {
@@ -11,33 +11,154 @@ import {
   TrendingDown,
   Calendar,
   AlertTriangle,
+  LogOut,
+  Check,
 } from "lucide-react";
-import { mockUserProfile } from "@/lib/mock-data";
 import { cn, formatDate, getScoreBgColor } from "@/lib/utils";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { calculateProgressStats } from "@/lib/progress-tracker";
+import { getDashboardStats } from "@/lib/api-client";
+import { useRouter } from "next/navigation";
 
 export default function ProfilePage() {
-  const profile = mockUserProfile;
+  const router = useRouter();
+  const { user, signOut, updateUser } = useAuth();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [savedSuccess, setSavedSuccess] = useState(false);
+
+  const [statsData, setStatsData] = useState(() => calculateProgressStats());
+
+  useEffect(() => {
+    if (user) {
+      setEditName(user.fullName || "");
+      setEditEmail(user.email || "");
+    }
+  }, [user]);
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const apiData = await getDashboardStats();
+        if (apiData?.profile) {
+          setStatsData({
+            stats: apiData.stats,
+            recentSessions: apiData.recentSessions,
+            weakTopics: apiData.weakTopics,
+            chapterPerformance: apiData.profile.chapterPerformance || [],
+            bestTopic: apiData.profile.bestTopic || "N/A",
+            worstTopic: apiData.profile.worstTopic || "N/A",
+          });
+          return;
+        }
+      } catch {
+        // Fallback
+      }
+      setStatsData(calculateProgressStats());
+    }
+
+    loadStats();
+  }, []);
+
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateUser({
+      fullName: editName,
+      email: editEmail,
+    });
+    setIsEditing(false);
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 3000);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push("/login");
+  };
+
+  const fullName = user?.fullName || "Medical Student";
+  const email = user?.email || "student@medace.ai";
+  const { stats, chapterPerformance, bestTopic, worstTopic } = statsData;
 
   return (
-    <AppLayout userName={profile.fullName}>
+    <AppLayout userName={fullName}>
       {/* Profile Header */}
       <Card padding="lg" className="mb-8">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-          <Avatar name={profile.fullName} size="lg" />
+          <Avatar name={fullName} size="lg" />
           <div className="text-center sm:text-left flex-1">
-            <h1 className="text-2xl font-bold">{profile.fullName}</h1>
-            <p className="text-sm text-muted">{profile.email}</p>
+            <h1 className="text-2xl font-bold">{fullName}</h1>
+            <p className="text-sm text-muted">{email}</p>
             <p className="text-xs text-muted mt-1 flex items-center gap-1 justify-center sm:justify-start">
               <Calendar className="h-3 w-3" />
-              Member since {formatDate(profile.memberSince)}
+              Logged in via {user?.provider === "google" ? "Google OAuth" : "Email"}
             </p>
           </div>
-          <Button variant="secondary" size="sm">
-            Edit Profile
-          </Button>
+          <div className="flex flex-wrap gap-2 justify-center sm:justify-end">
+            <Button
+              variant={isEditing ? "primary" : "secondary"}
+              size="sm"
+              onClick={() => setIsEditing(!isEditing)}
+            >
+              {isEditing ? "Cancel" : "Edit Profile"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSignOut}
+              className="text-error hover:bg-error/10"
+            >
+              <LogOut className="h-4 w-4 mr-1" />
+              Sign Out
+            </Button>
+          </div>
         </div>
+
+        {/* Save success toast */}
+        {savedSuccess && (
+          <div className="mt-4 flex items-center gap-2 text-xs text-success bg-success/10 border border-success/20 rounded-lg p-3">
+            <Check className="h-4 w-4" />
+            Profile details updated successfully!
+          </div>
+        )}
       </Card>
+
+      {/* Edit Profile Form */}
+      {isEditing && (
+        <Card padding="md" className="mb-8 border-primary/30">
+          <h2 className="text-lg font-semibold mb-4">Edit Details</h2>
+          <form onSubmit={handleSaveProfile} className="space-y-4 max-w-md">
+            <Input
+              label="Full Name"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              required
+            />
+            <Input
+              label="Email Address"
+              type="email"
+              value={editEmail}
+              onChange={(e) => setEditEmail(e.target.value)}
+              required
+            />
+            <div className="flex gap-3 pt-2">
+              <Button type="submit" size="sm">
+                Save Changes
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsEditing(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </Card>
+      )}
 
       {/* Overall Statistics */}
       <div className="mb-8">
@@ -48,22 +169,31 @@ export default function ProfilePage() {
               <BookOpen className="h-4 w-4 text-primary" />
               <span className="text-xs text-muted">Questions Attempted</span>
             </div>
-            <p className="text-2xl font-bold">{profile.totalQuestions}</p>
+            <p className="text-2xl font-bold">{stats.totalQuestions}</p>
           </Card>
           <Card padding="md">
             <div className="flex items-center gap-2 mb-2">
               <Target className="h-4 w-4 text-info" />
               <span className="text-xs text-muted">Sessions Completed</span>
             </div>
-            <p className="text-2xl font-bold">{profile.totalSessions}</p>
+            <p className="text-2xl font-bold">{stats.sessionsCompleted}</p>
           </Card>
           <Card padding="md">
             <div className="flex items-center gap-2 mb-2">
               <Trophy className="h-4 w-4 text-success" />
               <span className="text-xs text-muted">Overall Accuracy</span>
             </div>
-            <p className={cn("text-2xl font-bold", profile.overallAccuracy >= 70 ? "text-success" : profile.overallAccuracy >= 40 ? "text-warning" : "text-error")}>
-              {profile.overallAccuracy}%
+            <p
+              className={cn(
+                "text-2xl font-bold",
+                stats.accuracyRate >= 70
+                  ? "text-success"
+                  : stats.accuracyRate >= 40
+                  ? "text-warning"
+                  : "text-error"
+              )}
+            >
+              {stats.accuracyRate}%
             </p>
           </Card>
           <Card padding="md">
@@ -71,107 +201,63 @@ export default function ProfilePage() {
               <Trophy className="h-4 w-4 text-success" />
               <span className="text-xs text-muted">Best Topic</span>
             </div>
-            <p className="text-sm font-semibold">{profile.bestTopic}</p>
+            <p className="text-sm font-semibold truncate">{bestTopic}</p>
           </Card>
           <Card padding="md">
             <div className="flex items-center gap-2 mb-2">
               <TrendingDown className="h-4 w-4 text-error" />
               <span className="text-xs text-muted">Needs Work</span>
             </div>
-            <p className="text-sm font-semibold">{profile.worstTopic}</p>
+            <p className="text-sm font-semibold truncate">{worstTopic}</p>
           </Card>
           <Card padding="md">
             <div className="flex items-center gap-2 mb-2">
               <Flame className="h-4 w-4 text-warning" />
-              <span className="text-xs text-muted">Longest Streak</span>
+              <span className="text-xs text-muted">Study Streak</span>
             </div>
-            <p className="text-2xl font-bold">{profile.longestStreak} days</p>
+            <p className="text-2xl font-bold">{stats.studyStreak} days</p>
           </Card>
         </div>
       </div>
 
-      {/* Performance by Chapter — CSS Bar Chart */}
-      <div className="mb-8">
-        <h2 className="text-lg font-semibold mb-4">Performance by Chapter</h2>
-        <Card padding="md">
-          <div className="space-y-3">
-            {profile.chapterPerformance.map((ch) => (
-              <div key={ch.chapter} className="flex items-center gap-3">
-                <span className="text-xs text-muted w-48 shrink-0 truncate">
-                  {ch.chapter}
-                </span>
-                <div className="flex-1 h-5 rounded-full bg-border overflow-hidden">
-                  <div
-                    className={cn(
-                      "h-full rounded-full transition-all duration-700",
-                      getScoreBgColor(ch.accuracy)
-                    )}
-                    style={{ width: `${ch.accuracy}%` }}
-                  />
-                </div>
-                <span
-                  className={cn(
-                    "text-xs font-bold w-10 text-right",
-                    ch.accuracy >= 70
-                      ? "text-success"
-                      : ch.accuracy >= 40
-                      ? "text-warning"
-                      : "text-error"
-                  )}
-                >
-                  {ch.accuracy}%
-                </span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      {/* Settings */}
-      <div className="mb-8">
-        <h2 className="text-lg font-semibold mb-4">Settings</h2>
-        <Card padding="md" className="space-y-5">
-          <Input
-            label="Display Name"
-            defaultValue={profile.fullName}
-          />
-          <Input
-            label="Email"
-            defaultValue={profile.email}
-            type="email"
-          />
-
-          {/* Notification toggles */}
-          <div className="space-y-3 pt-2">
-            <p className="text-sm font-medium text-text">Notifications</p>
-            {[
-              { label: "Daily practice reminders", defaultOn: true },
-              { label: "Weekly progress reports", defaultOn: true },
-              { label: "Study plan updates", defaultOn: false },
-            ].map((toggle) => (
-              <div
-                key={toggle.label}
-                className="flex items-center justify-between"
-              >
-                <span className="text-sm text-muted">{toggle.label}</span>
-                <button
-                  className={cn(
-                    "relative h-6 w-11 rounded-full transition-colors cursor-pointer",
-                    toggle.defaultOn ? "bg-primary" : "bg-border"
-                  )}
-                >
+      {/* Performance by Chapter */}
+      {chapterPerformance.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold mb-4">Performance by Chapter</h2>
+          <Card padding="md">
+            <div className="space-y-3">
+              {chapterPerformance.map((ch) => (
+                <div key={ch.chapter} className="flex items-center gap-3">
+                  <span className="text-xs text-muted w-48 shrink-0 truncate">
+                    {ch.chapter}
+                  </span>
+                  <div className="flex-1 h-5 rounded-full bg-border overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full rounded-full transition-all duration-700",
+                        getScoreBgColor(ch.accuracy)
+                      )}
+                      style={{ width: `${ch.accuracy}%` }}
+                    />
+                  </div>
                   <span
                     className={cn(
-                      "absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform shadow-sm",
-                      toggle.defaultOn ? "left-[22px]" : "left-0.5"
+                      "text-xs font-bold w-10 text-right",
+                      ch.accuracy >= 70
+                        ? "text-success"
+                        : ch.accuracy >= 40
+                        ? "text-warning"
+                        : "text-error"
                     )}
-                  />
-                </button>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+                  >
+                    {ch.accuracy}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Danger Zone */}
       <Card padding="md" className="border-error/20">
@@ -212,7 +298,11 @@ export default function ProfilePage() {
             >
               Cancel
             </Button>
-            <Button variant="danger" className="flex-1">
+            <Button
+              variant="danger"
+              className="flex-1"
+              onClick={handleSignOut}
+            >
               Delete Account
             </Button>
           </div>

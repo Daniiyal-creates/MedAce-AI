@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, Badge, Button, Progress, Input, Modal, Select, Tabs } from "@/components/ui";
-import { Search, AlertTriangle, Sparkles } from "lucide-react";
+import { Search, AlertTriangle, Sparkles, Loader2 } from "lucide-react";
 import { mockTopics } from "@/lib/mock-data";
-import { cn } from "@/lib/utils";
+import { generateQuiz, getDashboardStats } from "@/lib/api-client";
+import { calculateProgressStats } from "@/lib/progress-tracker";
+import { useAuth } from "@/components/auth/AuthProvider";
 import type { Topic } from "@/types/quiz";
 
 const categoryTabs = [
@@ -16,20 +19,87 @@ const categoryTabs = [
 ];
 
 export default function PracticePage() {
+  const router = useRouter();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [difficulty, setDifficulty] = useState("Mixed");
-  const [numQuestions, setNumQuestions] = useState("10");
+  const [numQuestions, setNumQuestions] = useState("20");
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const filtered = mockTopics.filter((t) => {
+  const [topicsWithStats, setTopicsWithStats] = useState<Topic[]>(mockTopics);
+
+  useEffect(() => {
+    async function loadTopicStats() {
+      let statsResult = calculateProgressStats();
+
+      try {
+        const apiData = await getDashboardStats();
+        if (apiData?.weakTopics || apiData?.profile?.chapterPerformance) {
+          // Merge API stats if present
+        }
+      } catch {
+        // Fallback to local
+      }
+
+      // Map real performance onto catalog topics
+      const updated = mockTopics.map((topic) => {
+        const perf = statsResult.chapterPerformance.find(
+          (cp) => cp.chapter.toLowerCase() === topic.name.toLowerCase()
+        );
+        const weak = statsResult.weakTopics.find(
+          (wt) => wt.topic.toLowerCase() === topic.name.toLowerCase()
+        );
+
+        return {
+          ...topic,
+          accuracy: perf ? perf.accuracy : undefined,
+          isWeak: !!weak,
+        };
+      });
+
+      setTopicsWithStats(updated);
+    }
+
+    loadTopicStats();
+  }, []);
+
+  const filtered = topicsWithStats.filter((t) => {
     const matchesCategory = activeTab === "all" || t.category === activeTab;
     const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
+  const handleStartPractice = async () => {
+    if (!selectedTopic) return;
+    setIsGenerating(true);
+
+    try {
+      const session = await generateQuiz({
+        chapter: selectedTopic.chapterNum,
+        topic: selectedTopic.name,
+        difficulty: difficulty as any,
+        count: parseInt(numQuestions, 10),
+      });
+
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(`session_${session.id}`, JSON.stringify(session));
+      }
+
+      router.push(`/practice/${session.id}`);
+    } catch (err) {
+      console.warn("Using fallback demo session navigation:", err);
+      router.push(`/practice/${selectedTopic.id}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const userName = user?.fullName || "Medical Student";
+
   return (
-    <AppLayout userName="Ahmed Khan">
+    <AppLayout userName={userName}>
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold">Choose a Topic</h1>
@@ -153,25 +223,12 @@ export default function PracticePage() {
               value={numQuestions}
               onChange={(e) => setNumQuestions(e.target.value)}
               options={[
-                { value: "5", label: "5 Questions (Quick)" },
-                { value: "10", label: "10 Questions (Standard)" },
-                { value: "15", label: "15 Questions (Extended)" },
-                { value: "20", label: "20 Questions (Full Session)" },
+                { value: "20", label: "20 Questions (Standard Quiz)" },
+                { value: "30", label: "30 Questions (Extended Practice)" },
+                { value: "40", label: "40 Questions (Intensive Session)" },
+                { value: "50", label: "50 Questions (Full MDCAT Mock)" },
               ]}
             />
-
-            {/* Timer toggle */}
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Timer</p>
-                <p className="text-xs text-muted">
-                  60 seconds per question
-                </p>
-              </div>
-              <button className="relative h-6 w-11 rounded-full bg-border transition-colors cursor-pointer">
-                <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-muted transition-transform" />
-              </button>
-            </div>
 
             {/* AI note */}
             <div className="rounded-lg bg-accent/5 border border-accent/20 p-3 flex items-start gap-2">
@@ -183,9 +240,23 @@ export default function PracticePage() {
             </div>
 
             {/* Start button */}
-            <Button className="w-full" size="lg">
-              <Sparkles className="h-4 w-4" />
-              Start Practice
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={handleStartPractice}
+              disabled={isGenerating}
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generating Questions...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Start Practice
+                </>
+              )}
             </Button>
           </div>
         )}

@@ -111,6 +111,20 @@
   ::-webkit-scrollbar-thumb:hover {
     background: var(--color-muted);
   }
+
+  /* Dark mode dropdown select option styling */
+  select option {
+    background-color: var(--color-surface) !important;
+    color: var(--color-text) !important;
+    padding: 8px 12px;
+  }
+
+  select option:hover,
+  select option:focus,
+  select option:checked {
+    background-color: var(--color-surface-hover) !important;
+    color: var(--color-primary) !important;
+  }
 }
 
 /* ===========================

@@ -1,0 +1,39 @@
+# MedAce AI — Project Tech Stack & Backend Requirements
+
+# Runtime & Core Framework
+node>=18.17.0
+next>=15.3.3
+react>=19.1.0
+react-dom>=19.1.0
+typescript>=5.8.3
+
+# AI & Vector Embedding Models
+# Models: gemini-2.0-flash, text-embedding-004
+@google/generative-ai>=0.21.0
+
+# Database & Vector Database (Supabase PostgreSQL + pgvector extension)
+@supabase/supabase-js>=2.49.8
+@supabase/ssr>=0.6.1
+drizzle-orm>=0.36.4
+postgres>=3.4.5
+
+# Data Validation & State Management
+zod>=3.24.4
+@tanstack/react-query>=5.75.5
+react-hook-form>=7.56.3
+@hookform/resolvers>=3.10.0
+
+# Styling & UI Components
+lucide-react>=0.469.0
+clsx>=2.1.1
+tailwind-merge>=2.6.0
+tailwindcss>=4.1.7
+
+# CLI & Ingestion Runner
+tsx>=4.19.4
+
+# Required Environment Variables (.env.local)
+# NEXT_PUBLIC_SUPABASE_URL=https://<your-project>.supabase.co
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+# SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+# GEMINI_API_KEY=<your-gemini-api-key>

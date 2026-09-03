@@ -13,21 +13,21 @@ import type {
    TOPICS — 15 MDCAT Biology Chapters
    =========================== */
 export const mockTopics: Topic[] = [
-  { id: "ch1", chapterNum: 1, name: "Digestive System of Man", category: "Human Physiology", subtopicsCount: 12, accuracy: 72, isWeak: false },
-  { id: "ch2", chapterNum: 2, name: "Blood Circulatory System of Man", category: "Human Physiology", subtopicsCount: 14, accuracy: 58, isWeak: true },
-  { id: "ch3", chapterNum: 3, name: "Respiratory System of Man", category: "Human Physiology", subtopicsCount: 10, accuracy: 81 },
-  { id: "ch4", chapterNum: 4, name: "Urinary System of Man", category: "Human Physiology", subtopicsCount: 9, accuracy: 45, isWeak: true },
-  { id: "ch5", chapterNum: 5, name: "Nervous System of Man", category: "Human Physiology", subtopicsCount: 18, accuracy: 38, isWeak: true },
-  { id: "ch6", chapterNum: 6, name: "Endocrine System of Man", category: "Human Physiology", subtopicsCount: 11, accuracy: 67 },
-  { id: "ch7", chapterNum: 7, name: "Skeletal System of Man", category: "Human Physiology", subtopicsCount: 10, accuracy: 75 },
-  { id: "ch8", chapterNum: 8, name: "Thermoregulation & Homeostasis", category: "Human Physiology", subtopicsCount: 7, accuracy: 85 },
-  { id: "ch9", chapterNum: 9, name: "Immunity", category: "Modern Topics", subtopicsCount: 12, accuracy: 52, isWeak: true },
-  { id: "ch10", chapterNum: 10, name: "Biotechnology", category: "Modern Topics", subtopicsCount: 13, accuracy: 63 },
+  { id: "ch1", chapterNum: 1, name: "Digestive System of Man", category: "Human Physiology", subtopicsCount: 12 },
+  { id: "ch2", chapterNum: 2, name: "Blood Circulatory System of Man", category: "Human Physiology", subtopicsCount: 14 },
+  { id: "ch3", chapterNum: 3, name: "Respiratory System of Man", category: "Human Physiology", subtopicsCount: 10 },
+  { id: "ch4", chapterNum: 4, name: "Urinary System of Man", category: "Human Physiology", subtopicsCount: 9 },
+  { id: "ch5", chapterNum: 5, name: "Nervous System of Man", category: "Human Physiology", subtopicsCount: 18 },
+  { id: "ch6", chapterNum: 6, name: "Endocrine System of Man", category: "Human Physiology", subtopicsCount: 11 },
+  { id: "ch7", chapterNum: 7, name: "Skeletal System of Man", category: "Human Physiology", subtopicsCount: 10 },
+  { id: "ch8", chapterNum: 8, name: "Thermoregulation & Homeostasis", category: "Human Physiology", subtopicsCount: 7 },
+  { id: "ch9", chapterNum: 9, name: "Immunity", category: "Modern Topics", subtopicsCount: 12 },
+  { id: "ch10", chapterNum: 10, name: "Biotechnology", category: "Modern Topics", subtopicsCount: 13 },
   { id: "ch11", chapterNum: 11, name: "Biostatistics & Data Handling", category: "Modern Topics", subtopicsCount: 8 },
   { id: "ch12", chapterNum: 12, name: "Structural & Computational Biology", category: "Modern Topics", subtopicsCount: 6 },
-  { id: "ch13", chapterNum: 13, name: "Climate Change", category: "Modern Topics", subtopicsCount: 7, accuracy: 90 },
-  { id: "ch14", chapterNum: 14, name: "Selected Topics", category: "Modern Topics", subtopicsCount: 9, accuracy: 70 },
-  { id: "ch15", chapterNum: 15, name: "Pharmacological Drugs", category: "Pharmacology", subtopicsCount: 10, accuracy: 42, isWeak: true },
+  { id: "ch13", chapterNum: 13, name: "Climate Change", category: "Modern Topics", subtopicsCount: 7 },
+  { id: "ch14", chapterNum: 14, name: "Selected Topics", category: "Modern Topics", subtopicsCount: 9 },
+  { id: "ch15", chapterNum: 15, name: "Pharmacological Drugs", category: "Pharmacology", subtopicsCount: 10 },
 ];
 
 /* ===========================
@@ -235,7 +235,7 @@ export const mockCompletedSession: QuizSession = {
   chapterNum: 5,
   difficulty: "Mixed",
   numQuestions: 10,
-  score: 7,
+  score: 8,
   totalQuestions: 10,
   status: "completed",
   createdAt: "2026-08-30T09:00:00Z",

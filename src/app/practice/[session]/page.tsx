@@ -1,10 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Badge, Button, Progress, Modal } from "@/components/ui";
 import { mockQuestions } from "@/lib/mock-data";
+import { getQuestionsForChapter, parseChapterNumber } from "@/lib/chapter-questions";
+import { submitQuiz } from "@/lib/api-client";
+import { saveQuizToLocalHistory } from "@/lib/progress-tracker";
+import type { Question, QuizSession, UserAnswer } from "@/types/quiz";
 import {
   X,
   ChevronLeft,
@@ -19,21 +23,52 @@ type AnswerState = {
   [questionId: string]: {
     selected: "A" | "B" | "C" | "D";
     submitted: boolean;
+    timeTakenMs: number;
   };
 };
 
 export default function QuizPlayerPage() {
   const router = useRouter();
-  const questions = mockQuestions;
-  const totalQ = questions.length;
+  const params = useParams();
+  const sessionId = (params?.session as string) || "session-1";
 
+  const [session, setSession] = useState<QuizSession | null>(null);
+  const [questions, setQuestions] = useState<Question[]>(mockQuestions);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<AnswerState>({});
   const [showUrdu, setShowUrdu] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
-  const [timer, setTimer] = useState(60); // seconds per question
+  const [timer, setTimer] = useState(60);
 
-  const question = questions[currentIdx];
+  // Load active session from sessionStorage/localStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedSession =
+        sessionStorage.getItem(`session_${sessionId}`) ||
+        sessionStorage.getItem("active_quiz_session") ||
+        localStorage.getItem("active_quiz_session");
+
+      if (storedSession) {
+        try {
+          const parsed: QuizSession = JSON.parse(storedSession);
+          if (parsed && Array.isArray(parsed.questions) && parsed.questions.length > 0) {
+            setSession(parsed);
+            setQuestions(parsed.questions);
+            return;
+          }
+        } catch {
+          // fallback to chapter questions
+        }
+      }
+
+      const chapterNum = parseChapterNumber(sessionId);
+      const chapterQs = getQuestionsForChapter(chapterNum, `Chapter ${chapterNum}`, 10);
+      setQuestions(chapterQs);
+    }
+  }, [sessionId]);
+
+  const totalQ = questions.length;
+  const question = questions[currentIdx] || mockQuestions[0];
   const answer = answers[question.id];
   const isAnswered = !!answer?.submitted;
   const isLast = currentIdx === totalQ - 1;
@@ -54,32 +89,78 @@ export default function QuizPlayerPage() {
     setShowUrdu(false);
   }, [currentIdx]);
 
+  // Select and automatically submit option for smooth interaction
   const handleSelect = useCallback(
     (option: "A" | "B" | "C" | "D") => {
       if (isAnswered) return;
       setAnswers((prev) => ({
         ...prev,
-        [question.id]: { selected: option, submitted: false },
+        [question.id]: {
+          selected: option,
+          submitted: true,
+          timeTakenMs: Math.max((60 - timer) * 1000, 2000),
+        },
       }));
     },
-    [isAnswered, question.id]
+    [isAnswered, question.id, timer]
   );
 
-  const handleSubmit = useCallback(() => {
-    if (!answer?.selected || isAnswered) return;
-    setAnswers((prev) => ({
-      ...prev,
-      [question.id]: { ...prev[question.id], submitted: true },
-    }));
-  }, [answer, isAnswered, question.id]);
-
-  const handleNext = useCallback(() => {
+  const handleNext = useCallback(async () => {
     if (isLast) {
-      router.push("/results/session-done");
+      // Calculate real user results for all questions
+      const userAnswers: UserAnswer[] = questions.map((q) => {
+        const ans = answers[q.id];
+        const selectedAnswer = ans?.selected || null;
+        const isCorrect = selectedAnswer !== null && selectedAnswer === q.correctAnswer;
+        return {
+          questionId: q.id,
+          selectedAnswer,
+          isCorrect,
+          timeTakenMs: ans?.timeTakenMs || 10000,
+        };
+      });
+
+      const correctCount = userAnswers.filter((a) => a.isCorrect).length;
+
+      const completedSession: QuizSession = {
+        id: sessionId,
+        topic: session?.topic || question.topic || "Practice Session",
+        chapterNum: session?.chapterNum || 5,
+        difficulty: session?.difficulty || "Mixed",
+        numQuestions: totalQ,
+        totalQuestions: totalQ,
+        score: correctCount,
+        status: "completed",
+        createdAt: new Date().toISOString(),
+        timeTakenMs: userAnswers.reduce((sum, a) => sum + a.timeTakenMs, 0),
+        questions,
+        answers: userAnswers,
+      };
+
+      if (typeof window !== "undefined") {
+        const sessionJSON = JSON.stringify(completedSession);
+        sessionStorage.setItem(`results_${sessionId}`, sessionJSON);
+        sessionStorage.setItem("latest_results_session", sessionJSON);
+        localStorage.setItem("latest_results_session", sessionJSON);
+        saveQuizToLocalHistory(completedSession);
+      }
+
+      // Record in backend database
+      try {
+        await submitQuiz({
+          sessionId,
+          answers: userAnswers,
+          timeTakenMs: completedSession.timeTakenMs,
+        });
+      } catch {
+        // continue to results page
+      }
+
+      router.push(`/results/${sessionId}`);
     } else {
       setCurrentIdx((prev) => prev + 1);
     }
-  }, [isLast, router]);
+  }, [isLast, questions, answers, sessionId, session, totalQ, question, router]);
 
   const handlePrev = useCallback(() => {
     if (currentIdx > 0) setCurrentIdx((prev) => prev - 1);
@@ -91,11 +172,10 @@ export default function QuizPlayerPage() {
         return "border-primary bg-primary/10 text-text";
       return "border-border hover:border-primary/40 hover:bg-primary/5 text-muted";
     }
-    // After submission
     const isCorrect = letter === question.correctAnswer;
     const isSelected = answer?.selected === letter;
-    if (isCorrect) return "border-success bg-success/10 text-success";
-    if (isSelected && !isCorrect) return "border-error bg-error/10 text-error";
+    if (isCorrect) return "border-success bg-success/10 text-success font-semibold";
+    if (isSelected && !isCorrect) return "border-error bg-error/10 text-error font-semibold";
     return "border-border text-muted opacity-50";
   };
 
@@ -113,12 +193,12 @@ export default function QuizPlayerPage() {
       <header className="sticky top-0 z-40 bg-surface/80 backdrop-blur-xl border-b border-border">
         <div className="mx-auto max-w-4xl px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Badge variant="default">Ch 5</Badge>
+            <Badge variant="default">Ch {session?.chapterNum || 5}</Badge>
             <span className="text-sm font-medium text-text hidden sm:block">
-              Nervous System of Man
+              {session?.topic || question.topic}
             </span>
             <Badge variant="info" className="hidden sm:inline-flex">
-              Mixed
+              {session?.difficulty || "Mixed"}
             </Badge>
           </div>
 
@@ -167,7 +247,7 @@ export default function QuizPlayerPage() {
         <div className="mb-8 animate-fade-in" key={question.id}>
           <div className="flex items-center gap-2 mb-4">
             <Badge variant="default">
-              Q{currentIdx + 1}
+              Q{currentIdx + 1} of {totalQ}
             </Badge>
             <Badge
               variant={
@@ -278,7 +358,7 @@ export default function QuizPlayerPage() {
           </Button>
 
           {/* Question dots */}
-          <div className="hidden sm:flex items-center gap-1.5">
+          <div className="hidden sm:flex items-center gap-1.5 max-w-[200px] overflow-x-auto py-1">
             {questions.map((q, i) => {
               const a = answers[q.id];
               return (
@@ -286,7 +366,7 @@ export default function QuizPlayerPage() {
                   key={q.id}
                   onClick={() => setCurrentIdx(i)}
                   className={cn(
-                    "h-2.5 w-2.5 rounded-full transition-colors cursor-pointer",
+                    "h-2.5 w-2.5 shrink-0 rounded-full transition-colors cursor-pointer",
                     i === currentIdx
                       ? "ring-2 ring-primary ring-offset-2 ring-offset-bg bg-primary"
                       : a?.submitted
@@ -303,16 +383,10 @@ export default function QuizPlayerPage() {
             })}
           </div>
 
-          {isAnswered ? (
-            <Button onClick={handleNext}>
-              {isLast ? "Finish Quiz" : "Next"}
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          ) : (
-            <Button onClick={handleSubmit} disabled={!answer?.selected}>
-              Submit
-            </Button>
-          )}
+          <Button onClick={handleNext}>
+            {isLast ? "Finish Quiz" : "Next"}
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
       </main>
 

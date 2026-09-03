@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, Badge, Button, Progress } from "@/components/ui";
 import Link from "next/link";
@@ -9,26 +12,62 @@ import {
   BookOpen,
   Clock,
   Target,
+  Sparkles,
 } from "lucide-react";
-import {
-  mockDashboardStats,
-  mockWeakTopics,
-  mockRecentSessions,
-  mockTopics,
-} from "@/lib/mock-data";
+import { mockTopics } from "@/lib/mock-data";
 import { getScoreColor, formatDate } from "@/lib/utils";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { getDashboardStats } from "@/lib/api-client";
+import { calculateProgressStats } from "@/lib/progress-tracker";
+import type { DashboardStats, RecentSession, WeakTopic } from "@/types/quiz";
 
 export default function DashboardPage() {
-  const stats = mockDashboardStats;
-  const userName = "Ahmed";
+  const { user } = useAuth();
+  const [stats, setStats] = useState<DashboardStats>({
+    totalQuestions: 0,
+    questionsThisWeek: 0,
+    accuracyRate: 0,
+    sessionsCompleted: 0,
+    studyStreak: 0,
+  });
+  const [weakTopics, setWeakTopics] = useState<WeakTopic[]>([]);
+  const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const apiData = await getDashboardStats();
+        if (apiData?.stats && apiData.stats.totalQuestions > 0) {
+          setStats(apiData.stats);
+          setWeakTopics(apiData.weakTopics || []);
+          setRecentSessions(apiData.recentSessions || []);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // Fallback to local progress calculator
+      }
+
+      const localCalculated = calculateProgressStats();
+      setStats(localCalculated.stats);
+      setWeakTopics(localCalculated.weakTopics);
+      setRecentSessions(localCalculated.recentSessions);
+      setLoading(false);
+    }
+
+    loadStats();
+  }, []);
+
+  const userName = user?.fullName || "Medical Student";
 
   return (
-    <AppLayout userName="Ahmed Khan">
+    <AppLayout userName={userName}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold">
-            Welcome back, {userName}
+            Welcome back, {userName}!
           </h1>
           <p className="text-sm text-muted mt-1">
             {new Date().toLocaleDateString("en-US", {
@@ -59,7 +98,7 @@ export default function DashboardPage() {
             value: `${stats.accuracyRate}%`,
             sub: "Overall",
             icon: Target,
-            color: stats.accuracyRate >= 70 ? "text-success" : "text-warning",
+            color: stats.accuracyRate >= 70 ? "text-success" : stats.accuracyRate >= 40 ? "text-warning" : "text-error",
           },
           {
             label: "Sessions Done",
@@ -105,35 +144,49 @@ export default function DashboardPage() {
               </Link>
             </div>
             <div className="divide-y divide-border">
-              {mockWeakTopics.map((wt) => (
-                <div
-                  key={wt.topic}
-                  className="flex items-center gap-4 px-5 py-3.5 hover:bg-surface-hover transition-colors"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="default">Ch {wt.chapterNum}</Badge>
-                      <span className="text-sm font-medium truncate">
-                        {wt.topic}
-                      </span>
+              {weakTopics.length > 0 ? (
+                weakTopics.map((wt) => (
+                  <div
+                    key={wt.topic}
+                    className="flex items-center gap-4 px-5 py-3.5 hover:bg-surface-hover transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="default">Ch {wt.chapterNum}</Badge>
+                        <span className="text-sm font-medium truncate">
+                          {wt.topic}
+                        </span>
+                      </div>
+                      <Progress
+                        value={wt.weaknessScore}
+                        variant={
+                          wt.weaknessScore >= 70
+                            ? "error"
+                            : wt.weaknessScore >= 50
+                            ? "warning"
+                            : "primary"
+                        }
+                        size="sm"
+                      />
                     </div>
-                    <Progress
-                      value={wt.weaknessScore}
-                      variant={
-                        wt.weaknessScore >= 70
-                          ? "error"
-                          : wt.weaknessScore >= 50
-                          ? "warning"
-                          : "primary"
-                      }
-                      size="sm"
-                    />
+                    <span className="text-xs text-muted shrink-0">
+                      {wt.errorCount}/{wt.attemptCount} wrong
+                    </span>
                   </div>
-                  <span className="text-xs text-muted shrink-0">
-                    {wt.errorCount}/{wt.attemptCount} wrong
-                  </span>
+                ))
+              ) : (
+                <div className="p-8 text-center">
+                  <Sparkles className="h-8 w-8 text-primary mx-auto mb-2 opacity-50" />
+                  <p className="text-sm text-muted">
+                    No weak topics tracked yet. Start practicing to generate performance analytics!
+                  </p>
+                  <Link href="/practice" className="mt-3 inline-block">
+                    <Button size="sm" variant="secondary">
+                      Start Quiz
+                    </Button>
+                  </Link>
                 </div>
-              ))}
+              )}
             </div>
           </Card>
         </div>
@@ -148,30 +201,36 @@ export default function DashboardPage() {
               </h2>
             </div>
             <div className="divide-y divide-border">
-              {mockRecentSessions.map((s) => {
-                const pct = Math.round((s.score / s.totalQuestions) * 100);
-                return (
-                  <Link
-                    key={s.id}
-                    href={`/results/${s.id}`}
-                    className="flex items-center justify-between px-5 py-3.5 hover:bg-surface-hover transition-colors"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {s.topic}
-                      </p>
-                      <p className="text-xs text-muted">
-                        {formatDate(s.date)}
-                      </p>
-                    </div>
-                    <span
-                      className={`text-sm font-bold ${getScoreColor(pct)}`}
+              {recentSessions.length > 0 ? (
+                recentSessions.map((s) => {
+                  const pct = Math.round((s.score / s.totalQuestions) * 100);
+                  return (
+                    <Link
+                      key={s.id}
+                      href={`/results/${s.id}`}
+                      className="flex items-center justify-between px-5 py-3.5 hover:bg-surface-hover transition-colors"
                     >
-                      {s.score}/{s.totalQuestions}
-                    </span>
-                  </Link>
-                );
-              })}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {s.topic}
+                        </p>
+                        <p className="text-xs text-muted">
+                          {formatDate(s.date)}
+                        </p>
+                      </div>
+                      <span
+                        className={`text-sm font-bold ${getScoreColor(pct)}`}
+                      >
+                        {s.score}/{s.totalQuestions}
+                      </span>
+                    </Link>
+                  );
+                })
+              ) : (
+                <div className="p-8 text-center text-sm text-muted">
+                  No completed sessions yet.
+                </div>
+              )}
             </div>
           </Card>
         </div>
@@ -189,48 +248,22 @@ export default function DashboardPage() {
           </Link>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {mockTopics
-            .filter((t) => t.isWeak || t.accuracy !== undefined)
-            .slice(0, 4)
-            .map((topic) => (
-              <Link key={topic.id} href="/practice">
-                <Card
-                  className="hover:border-primary/20 cursor-pointer group"
-                  padding="md"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <Badge variant="default">Ch {topic.chapterNum}</Badge>
-                    {topic.isWeak && (
-                      <Badge variant="warning">Weak</Badge>
-                    )}
-                  </div>
-                  <h3 className="text-sm font-medium mb-2 group-hover:text-primary transition-colors line-clamp-2">
-                    {topic.name}
-                  </h3>
-                  {topic.accuracy !== undefined ? (
-                    <div className="flex items-center gap-2">
-                      <Progress
-                        value={topic.accuracy}
-                        variant={
-                          topic.accuracy >= 70
-                            ? "success"
-                            : topic.accuracy >= 40
-                            ? "warning"
-                            : "error"
-                        }
-                        size="sm"
-                        className="flex-1"
-                      />
-                      <span className="text-xs text-muted shrink-0">
-                        {topic.accuracy}%
-                      </span>
-                    </div>
-                  ) : (
-                    <Badge variant="info">New</Badge>
-                  )}
-                </Card>
-              </Link>
-            ))}
+          {mockTopics.slice(0, 4).map((topic) => (
+            <Link key={topic.id} href="/practice">
+              <Card
+                className="hover:border-primary/20 cursor-pointer group"
+                padding="md"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <Badge variant="default">Ch {topic.chapterNum}</Badge>
+                </div>
+                <h3 className="text-sm font-medium mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                  {topic.name}
+                </h3>
+                <Badge variant="info">Practice Now</Badge>
+              </Card>
+            </Link>
+          ))}
         </div>
       </div>
     </AppLayout>

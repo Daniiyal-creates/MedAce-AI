@@ -5,6 +5,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui";
+import { useAuth } from "@/components/auth/AuthProvider";
 import {
   Brain,
   Menu,
@@ -30,6 +31,9 @@ interface NavbarProps {
 export default function Navbar({ variant = "landing", userName }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
+  const { user } = useAuth();
+
+  const displayName = userName || user?.fullName || "Medical Student";
 
   return (
     <header
@@ -96,7 +100,12 @@ export default function Navbar({ variant = "landing", userName }: NavbarProps) {
         {/* Right side — Avatar or CTA */}
         {variant === "app" && (
           <div className="hidden md:flex items-center gap-3">
-            <Avatar name={userName || "Student"} size="sm" />
+            <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <Avatar name={displayName} size="sm" />
+              <span className="text-xs font-medium text-text max-w-[120px] truncate">
+                {displayName}
+              </span>
+            </Link>
           </div>
         )}
 
