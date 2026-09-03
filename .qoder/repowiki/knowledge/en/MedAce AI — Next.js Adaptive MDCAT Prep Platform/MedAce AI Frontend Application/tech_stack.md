@@ -1,0 +1,1 @@
+Next.js App Router with TypeScript, @tanstack/react-query for client caching, and a custom Toast system; Supabase auth is prepared but currently disabled in middleware.

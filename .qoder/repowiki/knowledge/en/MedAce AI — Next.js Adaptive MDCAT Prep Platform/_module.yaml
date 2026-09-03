@@ -1,0 +1,17 @@
+schema_version: 1
+module_path: ""
+title: MedAce AI — Next.js Adaptive MDCAT Prep Platform
+scope:
+    - README.md
+    - .gitignore
+    - package.json
+    - package-lock.json
+    - tsconfig.json
+    - next.config.ts
+    - eslint.config.mjs
+    - postcss.config.mjs
+    - requirements.txt
+    - .env.example
+source_files: []
+depends_on: []
+related_to: []

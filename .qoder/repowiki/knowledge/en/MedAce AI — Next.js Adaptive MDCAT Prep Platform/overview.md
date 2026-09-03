@@ -1,0 +1,1 @@
+Root monorepo for MedAce AI, a single Next.js App Router application that wires Supabase auth/database, Gemini RAG, Drizzle ORM, and Tailwind/Framer Motion into an adaptive MDCAT prep platform.

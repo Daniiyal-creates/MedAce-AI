@@ -1,0 +1,1 @@
+Defines the Next.js App Router root layout, SEO metadata, global dark-theme CSS design tokens, and the animated landing page that introduces MedAce AI's adaptive MDCAT prep.

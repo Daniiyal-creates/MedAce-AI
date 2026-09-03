@@ -1,0 +1,1 @@
+`npm run dev` starts the Next.js dev server; `npx drizzle-kit generate && npx drizzle-kit migrate` applies schema migrations; `npx tsx scripts/ingest-textbooks.ts` runs the one-time textbook chunking/embedding pipeline before development.

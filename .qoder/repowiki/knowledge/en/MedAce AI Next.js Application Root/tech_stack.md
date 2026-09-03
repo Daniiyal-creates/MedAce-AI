@@ -1,1 +1,0 @@
-Next.js 15 App Router, React 19, TypeScript 5, Tailwind CSS v4, Supabase (Auth + PostgreSQL + pgvector), Drizzle ORM, TanStack Query v5, Google Gemini 2.0 Flash + text-embedding-004, Zod validation, React Hook Form, lucide-react icons, deployed on Vercel.

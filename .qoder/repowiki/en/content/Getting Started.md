@@ -5,270 +5,268 @@
 - [README.md](file://README.md)
 - [package.json](file://package.json)
 - [next.config.ts](file://next.config.ts)
-- [src/app/layout.tsx](file://src/app/layout.tsx)
-- [src/middleware.ts](file://src/middleware.ts)
-- [src/components/Providers.tsx](file://src/components/Providers.tsx)
-- [src/components/auth/AuthProvider.tsx](file://src/components/auth/AuthProvider.tsx)
-- [src/app/page.tsx](file://src/app/page.tsx)
-- [src/app/dashboard/page.tsx](file://src/app/dashboard/page.tsx)
-- [src/app/practice/page.tsx](file://src/app/practice/page.tsx)
-- [src/app/study-plan/page.tsx](file://src/app/study-plan/page.tsx)
+- [supabase/schema.sql](file://supabase/schema.sql)
+- [scripts/ingest-textbooks.ts](file://scripts/ingest-textbooks.ts)
+- [scripts/check-chunks.ts](file://scripts/check-chunks.ts)
+- [src/lib/supabase/admin.ts](file://src/lib/supabase/admin.ts)
+- [src/lib/supabase/server.ts](file://src/lib/supabase/server.ts)
+- [src/lib/ai/gemini.ts](file://src/lib/ai/gemini.ts)
 </cite>
 
 ## Table of Contents
 1. Introduction
-2. Project Structure
-3. Core Components
-4. Architecture Overview
-5. Detailed Component Analysis
-6. Dependency Analysis
-7. Performance Considerations
-8. Troubleshooting Guide
-9. Conclusion
+2. Prerequisites
+3. Installation and Setup
+4. Environment Variables
+5. Database Migrations with Drizzle ORM
+6. Textbook Content Ingestion (RAG Vector Store)
+7. Development Workflow
+8. Architecture Overview
+9. Troubleshooting Guide
+10. Conclusion
 
 ## Introduction
-MedAce AI is an adaptive MDCAT preparation platform designed as an AI-powered study coach for Pakistani medical students. It delivers English MCQs with on-demand Urdu explanations, tracks weak spots adaptively, and generates personalized study plans. The app mirrors the real exam experience while adding a high-leverage understanding layer to help students learn more effectively.
+MedAce AI is a full-stack Next.js application that generates adaptive, syllabus-grounded MCQs using Retrieval-Augmented Generation (RAG). It integrates Supabase for authentication, database, and vector storage, and Google Gemini for text generation and embeddings. This guide helps you set up the environment, configure services, run migrations, ingest textbook content into the vector store, and start development or production builds.
 
-Key goals:
-- Authentic exam language (English interface and questions)
-- On-demand Urdu explanations when concepts are unclear
-- Adaptive practice that targets weak areas
-- RAG-powered question generation grounded in textbook content
-
-## Project Structure
-The project follows a Next.js App Router layout with feature-based directories under src/app, shared UI components under src/components, utilities under src/lib, and TypeScript types under src/types. A RAG pipeline lives under rag/textbooks with supporting scripts referenced in documentation.
-
-```mermaid
-graph TB
-subgraph "Frontend"
-A["Next.js App<br/>src/app/*"]
-B["Components<br/>src/components/*"]
-C["Providers & Auth<br/>src/components/*"]
-end
-subgraph "Runtime"
-D["Middleware<br/>src/middleware.ts"]
-E["Root Layout<br/>src/app/layout.tsx"]
-end
-subgraph "External Services"
-F["Supabase<br/>Auth + PostgreSQL + pgvector"]
-G["Google Gemini API<br/>MCQ + Embeddings"]
-end
-A --> D
-A --> E
-A --> B
-A --> C
-A --> F
-A --> G
-```
-
-**Diagram sources**
-- [src/middleware.ts:1-40](file://src/middleware.ts#L1-L40)
-- [src/app/layout.tsx:1-57](file://src/app/layout.tsx#L1-L57)
-- [README.md:25-78](file://README.md#L25-L78)
-
-**Section sources**
-- [README.md:163-226](file://README.md#L163-L226)
-- [package.json:1-42](file://package.json#L1-L42)
-
-## Core Components
-- Root layout and metadata: Sets up fonts, providers, and SEO metadata for the app.
-- Providers: Initializes TanStack Query client and toast provider for global state and notifications.
-- Authentication context: Provides a mock user during development; ready to be wired to Supabase Auth.
-- Middleware: Defines protected routes and includes commented logic to enforce authentication via cookies when Supabase is integrated.
-- Feature pages: Landing page, dashboard analytics, practice session selector, and study plan viewer.
-
-**Section sources**
-- [src/app/layout.tsx:1-57](file://src/app/layout.tsx#L1-L57)
-- [src/components/Providers.tsx:1-23](file://src/components/Providers.tsx#L1-L23)
-- [src/components/auth/AuthProvider.tsx:1-58](file://src/components/auth/AuthProvider.tsx#L1-L58)
-- [src/middleware.ts:1-40](file://src/middleware.ts#L1-L40)
-
-## Architecture Overview
-MedAce AI uses a Next.js frontend with server-side API routes, Supabase for auth and database (PostgreSQL with pgvector), and Google Gemini for MCQ generation and embeddings. The RAG pipeline indexes textbook chapters into vector embeddings for retrieval-augmented question generation.
-
-```mermaid
-sequenceDiagram
-participant U as "User Browser"
-participant N as "Next.js App"
-participant S as "Supabase"
-participant G as "Gemini API"
-U->>N : Open app / navigate to Practice
-N->>S : Authenticate (OAuth) and fetch user data
-N->>G : Generate MCQs or create embeddings
-G-->>N : Structured MCQ JSON or vectors
-N->>S : Store sessions, answers, weak topics
-S-->>N : Persisted data
-N-->>U : Render dashboard, practice, results
-```
-
-**Diagram sources**
-- [README.md:25-78](file://README.md#L25-L78)
-- [README.md:79-122](file://README.md#L79-L122)
-- [src/middleware.ts:1-40](file://src/middleware.ts#L1-L40)
-
-## Detailed Component Analysis
-
-### Installation and Environment Setup
-Follow these steps to set up MedAce AI locally:
-
-1. Install dependencies
-   - Run npm install using the project’s package manager.
-
-2. Configure environment variables
-   - Create .env.local with the following keys:
-     - NEXT_PUBLIC_SUPABASE_URL
-     - NEXT_PUBLIC_SUPABASE_ANON_KEY
-     - SUPABASE_SERVICE_ROLE_KEY
-     - DATABASE_URL
-     - GEMINI_API_KEY
-     - NEXT_PUBLIC_APP_URL
-
-3. Database migrations
-   - Use Drizzle Kit to generate and apply migrations to your PostgreSQL database.
-
-4. Build the RAG index (one-time)
-   - Run the cleaning, chunking, embedding, and upload scripts to populate pgvector with textbook chunks.
-
-5. Start the development server
-   - Launch the Next.js dev server and open http://localhost:3000.
+## Prerequisites
+- Node.js and npm (or yarn) installed on your machine
+- A Supabase project with PostgreSQL enabled
+- A Google account to create a Gemini API key
+- Git (optional, for version control)
 
 Notes:
-- Security headers are configured at the framework level.
-- The root layout sets up fonts and global providers.
+- The app uses Supabase Auth (Google OAuth), Supabase PostgreSQL with pgvector, and Google Gemini models for both generation and embeddings.
+- Ensure your Supabase project has the required extensions enabled by running the provided schema script.
 
 **Section sources**
-- [README.md:292-316](file://README.md#L292-L316)
-- [README.md:228-244](file://README.md#L228-L244)
-- [next.config.ts:1-25](file://next.config.ts#L1-L25)
-- [src/app/layout.tsx:1-57](file://src/app/layout.tsx#L1-L57)
+- [README.md:27-83](file://README.md#L27-L83)
 
-### Supabase Authentication Setup
-- Create a Supabase project and enable Google OAuth in the Authentication settings.
-- Add your Supabase URL and anon key to environment variables.
-- The middleware contains commented logic to protect routes by checking the Supabase access token cookie; uncomment and integrate when ready.
-- The current AuthProvider returns a mock user for frontend-only development; replace it with a Supabase auth state listener to connect to your backend.
+## Installation and Setup
+Follow these steps to install dependencies and prepare the project locally:
 
-**Section sources**
-- [src/middleware.ts:1-40](file://src/middleware.ts#L1-L40)
-- [src/components/auth/AuthProvider.tsx:1-58](file://src/components/auth/AuthProvider.tsx#L1-L58)
+1. Clone the repository and navigate to the project root.
+2. Install dependencies:
+   - npm install
+3. Copy the environment template and fill in values:
+   - cp .env.example .env.local
+4. Run database migrations:
+   - npx drizzle-kit generate
+   - npx drizzle-kit migrate
+5. Ingest textbook content into the vector store (one-time):
+   - npx tsx scripts/ingest-textbooks.ts
+6. Start the development server:
+   - npm run dev
 
-### Google Gemini API Integration
-- Obtain a Google Gemini API key and set GEMINI_API_KEY in your environment.
-- The README documents the RAG pipeline that uses Gemini embeddings and MCQ generation.
-- Ensure your service account has appropriate permissions and quotas enabled.
-
-**Section sources**
-- [README.md:228-244](file://README.md#L228-L244)
-- [README.md:79-122](file://README.md#L79-L122)
-
-### PostgreSQL Database Configuration
-- Provide DATABASE_URL pointing to your PostgreSQL instance.
-- Enable pgvector extension in your database to store and query embeddings.
-- Run Drizzle migrations to create required tables (users, quiz_sessions, questions, user_answers, weak_topics, textbook_chunks, study_plans).
+Open http://localhost:3000 in your browser.
 
 **Section sources**
-- [README.md:228-244](file://README.md#L228-L244)
-- [README.md:124-161](file://README.md#L124-L161)
+- [README.md:414-435](file://README.md#L414-L435)
+- [package.json:5-9](file://package.json#L5-L9)
 
-### Quick Start for First-Time Users
-After setup, explore these core features:
+## Environment Variables
+Configure the following variables in your .env.local file:
 
-- Dashboard Analytics
-  - View total questions, accuracy rate, sessions completed, and study streak.
-  - See weak topics with progress indicators and recent session history.
+- NEXT_PUBLIC_SUPABASE_URL
+- NEXT_PUBLIC_SUPABASE_ANON_KEY
+- SUPABASE_SERVICE_ROLE_KEY
+- DATABASE_URL
+- GEMINI_API_KEY
+- NEXT_PUBLIC_APP_URL
 
-- Practice Sessions
-  - Choose a topic from the chapter list.
-  - Configure difficulty, number of questions, and optional timer.
-  - Start an AI-generated practice session grounded in textbook content.
+Details:
+- Supabase URL and keys are used by both client and server clients.
+- DATABASE_URL is required for Drizzle ORM migrations.
+- GEMINI_API_KEY is required for generating embeddings and MCQs.
+- NEXT_PUBLIC_APP_URL is used for redirects and callbacks.
 
-- Study Plan Generation
-  - View a weekly plan tailored to your performance.
-  - See today’s tasks, completed items, and rationale behind the plan.
+Where these are used:
+- Server-side Supabase client reads NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.
+- Admin Supabase client reads NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.
+- Gemini integration reads GEMINI_API_KEY.
+
+**Section sources**
+- [README.md:255-271](file://README.md#L255-L271)
+- [src/lib/supabase/server.ts:7-9](file://src/lib/supabase/server.ts#L7-L9)
+- [src/lib/supabase/admin.ts:4-6](file://src/lib/supabase/admin.ts#L4-L6)
+- [src/lib/ai/gemini.ts:6-8](file://src/lib/ai/gemini.ts#L6-L8)
+
+## Database Migrations with Drizzle ORM
+The project uses Drizzle ORM for type-safe queries and migrations. Before running the app, apply the schema to your Supabase PostgreSQL instance:
+
+1. Generate migration files:
+   - npx drizzle-kit generate
+2. Apply migrations:
+   - npx drizzle-kit migrate
+
+Schema highlights:
+- Enables PostgreSQL extensions: vector, uuid-ossp, pgcrypto.
+- Creates tables for profiles, textbook_chunks (with 768-dim vectors), quiz_sessions, quiz_questions, user_responses, study_plans.
+- Defines an HNSW index on textbook_chunks.embedding for fast cosine similarity search.
+- Provides an RPC function match_chunks(query_embedding, threshold, count, filter_chapter) for RAG retrieval.
+- Sets Row Level Security policies for all tables.
+- Adds a trigger to auto-create profiles on new user signup.
 
 ```mermaid
 flowchart TD
-Start(["Open App"]) --> Dash["Dashboard"]
-Dash --> Practice["Practice Page"]
-Practice --> Config["Configure Session"]
-Config --> Session["Start Practice"]
-Session --> Results["Results & Explanations"]
-Dash --> Plan["Study Plan"]
-Plan --> Today["Today's Tasks"]
-Today --> Practice
-```
-
-[No diagram sources needed since this diagram shows conceptual workflow]
-
-**Section sources**
-- [src/app/dashboard/page.tsx:1-239](file://src/app/dashboard/page.tsx#L1-L239)
-- [src/app/practice/page.tsx:1-196](file://src/app/practice/page.tsx#L1-L196)
-- [src/app/study-plan/page.tsx:1-192](file://src/app/study-plan/page.tsx#L1-L192)
-
-## Dependency Analysis
-Core runtime and tooling dependencies include Next.js, React, Supabase SDKs, Drizzle ORM, TanStack Query, Google Generative AI, Zod, and Tailwind CSS. Development tools include TypeScript, Drizzle Kit, PostCSS, ESLint, and tsx for running scripts.
-
-```mermaid
-graph LR
-Pkg["package.json"]
-Next["Next.js"]
-React["React"]
-SB["@supabase/supabase-js"]
-DRZ["drizzle-orm"]
-TQ["@tanstack/react-query"]
-GA["@google/generative-ai"]
-ZOD["zod"]
-TW["tailwindcss"]
-Pkg --> Next
-Pkg --> React
-Pkg --> SB
-Pkg --> DRZ
-Pkg --> TQ
-Pkg --> GA
-Pkg --> ZOD
-Pkg --> TW
+Start(["Start Migration"]) --> Gen["Generate Drizzle Migration"]
+Gen --> Apply["Apply Migration to Supabase DB"]
+Apply --> Extensions{"Extensions Enabled?"}
+Extensions --> |Yes| Tables["Create Tables & Indexes"]
+Extensions --> |No| EnableExt["Enable vector, uuid-ossp, pgcrypto"]
+EnableExt --> Tables
+Tables --> Policies["Enable RLS & Create Policies"]
+Policies --> Trigger["Create New User Profile Trigger"]
+Trigger --> End(["Migration Complete"])
 ```
 
 **Diagram sources**
-- [package.json:1-42](file://package.json#L1-L42)
+- [supabase/schema.sql:5-8](file://supabase/schema.sql#L5-L8)
+- [supabase/schema.sql:10-111](file://supabase/schema.sql#L10-L111)
+- [supabase/schema.sql:113-150](file://supabase/schema.sql#L113-L150)
+- [supabase/schema.sql:152-250](file://supabase/schema.sql#L152-L250)
 
 **Section sources**
-- [package.json:1-42](file://package.json#L1-L42)
+- [supabase/schema.sql:5-250](file://supabase/schema.sql#L5-L250)
 
-## Performance Considerations
-- Use TanStack Query caching and retries to reduce redundant network calls.
-- Keep RAG retrieval focused by limiting top-k chunks and reusing embeddings.
-- Prefer server-side rendering where possible to minimize client payload.
-- Monitor cold starts on Vercel; Drizzle and minimal dependencies help.
+## Textbook Content Ingestion (RAG Vector Store)
+This step ingests textbook chapters from rag/textbooks/*.txt into the vector store for RAG-based question generation.
 
-[No sources needed since this section provides general guidance]
+Process overview:
+- Reads chapter files, cleans text, chunks content, generates embeddings via Gemini, and upserts records into textbook_chunks.
+- Includes rate-limit handling and delays to respect free-tier constraints.
+- Uses the admin Supabase client for writes.
+
+```mermaid
+sequenceDiagram
+participant Dev as "Developer CLI"
+participant Script as "ingest-textbooks.ts"
+participant FS as "Filesystem"
+participant Gemini as "Gemini Embeddings"
+participant Supa as "Supabase Admin"
+Dev->>Script : Run ingestion script
+Script->>FS : Read chapter files
+Script->>Script : Clean and chunk text
+loop For each chunk
+Script->>Gemini : Generate embedding
+Gemini-->>Script : 768-dim vector
+Script->>Supa : Upsert chunk record
+end
+Script-->>Dev : Summary of ingested chunks
+```
+
+Key behaviors:
+- Chunking strategy preserves paragraph boundaries with overlap to maintain context.
+- Embedding model outputs 768-dimensional vectors stored in the vector column.
+- Upserts use conflict resolution to avoid duplicates.
+- Rate limit retries with backoff when encountering 429 responses.
+
+**Diagram sources**
+- [scripts/ingest-textbooks.ts:49-75](file://scripts/ingest-textbooks.ts#L49-L75)
+- [scripts/ingest-textbooks.ts:97-183](file://scripts/ingest-textbooks.ts#L97-L183)
+- [src/lib/ai/gemini.ts:21-43](file://src/lib/ai/gemini.ts#L21-L43)
+- [src/lib/supabase/admin.ts:3-20](file://src/lib/supabase/admin.ts#L3-L20)
+
+Verification:
+- Use the check-chunks script to verify the number of ingested chunks in the database.
+
+**Section sources**
+- [scripts/ingest-textbooks.ts:1-189](file://scripts/ingest-textbooks.ts#L1-L189)
+- [scripts/check-chunks.ts:1-30](file://scripts/check-chunks.ts#L1-L30)
+- [src/lib/ai/gemini.ts:21-43](file://src/lib/ai/gemini.ts#L21-L43)
+- [src/lib/supabase/admin.ts:3-20](file://src/lib/supabase/admin.ts#L3-L20)
+
+## Development Workflow
+Useful commands for daily development and production:
+
+- Start development server (hot-reload):
+  - npm run dev
+- Build for production:
+  - npm run build
+- Start production server:
+  - npm run start
+- Lint code:
+  - npm run lint
+
+Security headers are configured at the framework level for all routes.
+
+**Section sources**
+- [package.json:5-9](file://package.json#L5-L9)
+- [next.config.ts:3-21](file://next.config.ts#L3-L21)
+
+## Architecture Overview
+High-level components involved during setup and runtime:
+
+- Supabase Client (Server): Used in server components and API routes for authenticated operations.
+- Supabase Admin Client: Used by ingestion scripts for privileged writes.
+- Gemini Integration: Provides text generation and embeddings via API key.
+- Database Schema: Defines tables, indexes, functions, and policies for RAG and user data.
+
+```mermaid
+graph TB
+subgraph "Local Dev"
+DevCLI["Developer CLI"]
+Scripts["Ingestion Scripts"]
+end
+subgraph "Next.js App"
+ServerClient["Supabase Server Client"]
+AdminClient["Supabase Admin Client"]
+GeminiLib["Gemini Integration"]
+end
+subgraph "Supabase"
+DB["PostgreSQL + pgvector"]
+Auth["Auth (OAuth)"]
+Storage["Storage"]
+end
+DevCLI --> Scripts
+Scripts --> AdminClient
+Scripts --> DB
+ServerClient --> DB
+ServerClient --> Auth
+GeminiLib --> DB
+AdminClient --> DB
+```
+
+**Diagram sources**
+- [src/lib/supabase/server.ts:1-28](file://src/lib/supabase/server.ts#L1-L28)
+- [src/lib/supabase/admin.ts:1-22](file://src/lib/supabase/admin.ts#L1-L22)
+- [src/lib/ai/gemini.ts:1-61](file://src/lib/ai/gemini.ts#L1-L61)
+- [supabase/schema.sql:1-250](file://supabase/schema.sql#L1-L250)
 
 ## Troubleshooting Guide
-Common issues and resolutions:
+Common issues and how to resolve them:
 
-- Missing environment variables
-  - Ensure all required keys are present in .env.local and match the expected names.
+- Database connection problems
+  - Ensure DATABASE_URL points to your Supabase PostgreSQL instance.
+  - Confirm Drizzle migrations have been applied successfully.
+  - Verify extensions (vector, uuid-ossp, pgcrypto) are enabled; re-run schema if needed.
 
-- Supabase OAuth not working
-  - Verify Google OAuth is enabled in Supabase and that redirect URLs are configured.
-  - Uncomment route protection in middleware and ensure cookies are handled correctly.
+- API key configuration
+  - GEMINI_API_KEY must be set in .env.local for embeddings and generation.
+  - If missing, Gemini calls will throw an error indicating the key is not configured.
 
-- Database migration errors
-  - Confirm DATABASE_URL points to a valid PostgreSQL instance with pgvector enabled.
-  - Re-run drizzle-kit generate and migrate if schema drift occurs.
+- Vector database initialization
+  - Ensure textbook_chunks table exists and has the vector(768) column and HNSW index.
+  - After ingestion, verify chunk count using the check-chunks script.
+  - If ingestion fails due to rate limits, the script includes retry logic with delays.
 
-- RAG index build failures
-  - Check Gemini API key and quota limits.
-  - Validate textbook text files exist and are readable before running clean/chunk/embed/upload scripts.
+- Supabase client misconfiguration
+  - NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be correct for server client usage.
+  - SUPABASE_SERVICE_ROLE_KEY must be correct for admin client usage.
 
-- Development server issues
-  - Clear node_modules and reinstall dependencies if dependency conflicts arise.
-  - Ensure Node version meets requirements for installed packages.
+- Authentication callback issues
+  - NEXT_PUBLIC_APP_URL should match your local or deployed domain for OAuth callbacks.
+
+- Security headers and CORS
+  - Review next.config.ts security headers if experiencing blocked requests or mixed content warnings.
 
 **Section sources**
-- [README.md:228-244](file://README.md#L228-L244)
-- [README.md:292-316](file://README.md#L292-L316)
-- [src/middleware.ts:1-40](file://src/middleware.ts#L1-L40)
+- [src/lib/ai/gemini.ts:6-8](file://src/lib/ai/gemini.ts#L6-L8)
+- [src/lib/ai/gemini.ts:29-43](file://src/lib/ai/gemini.ts#L29-L43)
+- [scripts/ingest-textbooks.ts:133-165](file://scripts/ingest-textbooks.ts#L133-L165)
+- [scripts/check-chunks.ts:20-27](file://scripts/check-chunks.ts#L20-L27)
+- [src/lib/supabase/server.ts:7-9](file://src/lib/supabase/server.ts#L7-L9)
+- [src/lib/supabase/admin.ts:4-6](file://src/lib/supabase/admin.ts#L4-L6)
+- [next.config.ts:3-21](file://next.config.ts#L3-L21)
 
 ## Conclusion
-You now have the essentials to set up MedAce AI, configure Supabase and Gemini, run database migrations, build the RAG index, and explore the core features: practice sessions, dashboard analytics, and study plan generation. Use the troubleshooting tips to resolve common setup issues and iterate confidently as you integrate full authentication and backend services.
+You now have the essential steps to set up MedAce AI locally: install dependencies, configure environment variables, apply database migrations, ingest textbook content into the vector store, and run development or production workflows. Refer to the troubleshooting section if you encounter common setup issues. For advanced customization, explore the schema, ingestion pipeline, and Gemini integration modules.

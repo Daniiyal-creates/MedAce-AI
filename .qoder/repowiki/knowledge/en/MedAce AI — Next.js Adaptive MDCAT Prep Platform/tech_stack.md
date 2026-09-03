@@ -1,0 +1,1 @@
+Next.js 15 App Router with React 19, TypeScript 5, Tailwind CSS v4, Framer Motion 13; Supabase (Auth + PostgreSQL + pgvector) accessed via @supabase/ssr and Drizzle ORM; Google Gemini 2.0 Flash for generation and text-embedding-004 for RAG embeddings; TanStack Query v5 for client state caching; Zod + React Hook Form for validation.

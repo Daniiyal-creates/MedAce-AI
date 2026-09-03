@@ -1,0 +1,5 @@
+- Pages import shared layout wrappers (`AppLayout`, `Navbar`, `Sidebar`, `Footer`) from `@/components/layout` instead of duplicating chrome.
+- All user-facing UI is built from the primitive components in `@/components/ui` (Button, Card, Input, Modal, etc.) re-exported via `index.ts`.
+- Server data is fetched exclusively through typed functions in `src/lib/api-client.ts` that POST/GET to Next.js API routes under `src/app/api/`.
+- API route handlers return JSON responses and surface errors via an `error` field that the client throws as a standard Error.
+- Shared domain models (QuizSession, DashboardStats, StudyPlan, etc.) are defined once in `src/types/quiz.ts` and imported by both API clients and route handlers.

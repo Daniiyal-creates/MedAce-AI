@@ -1,0 +1,4 @@
+- Shared UI primitives are implemented as reusable motion-enabled components under `src/components/ui/` and composed by page-level features rather than inline styles.
+- All runtime inputs and outputs are validated with Zod schemas co-located with their corresponding API route handlers and Drizzle table definitions.
+- Client-side data fetching goes through TanStack Query hooks that call Next.js API routes in `src/app/api/`, keeping Supabase/Gemini calls server-only.
+- Environment-sensitive configuration (Supabase URL/key, Gemini API key, database URL) is read from `process.env` and documented in `.env.example`.

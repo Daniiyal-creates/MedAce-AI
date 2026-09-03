@@ -1,0 +1,1 @@
+Route protection is toggled by uncommenting the Supabase cookie check in `src/middleware.ts`; until then all routes are open because the app runs frontend-only with mock data.

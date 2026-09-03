@@ -1,0 +1,1 @@
+Next.js App Router frontend for MedAce AI's adaptive MDCAT prep, wiring pages, shared UI components, React Query data fetching, and Next.js API routes into a single client-rendered application.

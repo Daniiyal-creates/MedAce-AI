@@ -2,16 +2,15 @@
 
 <cite>
 **Referenced Files in This Document**
-- [README.md](file://README.md)
-- [package.json](file://package.json)
-- [src/types/quiz.ts](file://src/types/quiz.ts)
-- [src/lib/mock-data.ts](file://src/lib/mock-data.ts)
-- [src/middleware.ts](file://src/middleware.ts)
-- [src/components/auth/AuthProvider.tsx](file://src/components/auth/AuthProvider.tsx)
-- [src/app/(auth)/login/page.tsx](file://src/app/(auth)/login/page.tsx)
-- [src/app/(auth)/signup/page.tsx](file://src/app/(auth)/signup/page.tsx)
-- [src/app/results/[session]/page.tsx](file://src/app/results/[session]/page.tsx)
-- [src/app/practice/[session]/page.tsx](file://src/app/practice/[session]/page.tsx)
+- [route.ts](file://src/app/api/quiz/generate/route.ts)
+- [route.ts](file://src/app/api/quiz/submit/route.ts)
+- [route.ts](file://src/app/api/dashboard/stats/route.ts)
+- [route.ts](file://src/app/api/study-plan/generate/route.ts)
+- [route.ts](file://src/app/api/quiz/explain/route.ts)
+- [schemas.ts](file://src/lib/validations/schemas.ts)
+- [quiz.ts](file://src/types/quiz.ts)
+- [schema.sql](file://supabase/schema.sql)
+- [middleware.ts](file://src/middleware.ts)
 </cite>
 
 ## Table of Contents
@@ -24,367 +23,462 @@
 7. Performance Considerations
 8. Troubleshooting Guide
 9. Conclusion
-10. Appendices
 
 ## Introduction
-This document provides a comprehensive API reference for MedAce AI’s internal APIs and external integrations. It covers:
-- Mock data endpoints used during development and testing for quiz generation, user profile management, and progress tracking.
-- Google Gemini integration points for AI-powered question generation and Urdu explanation creation, including request/response schemas and error handling guidance.
-- Supabase usage for authentication, database operations, and file storage.
-- TypeScript interfaces that define all API contracts.
-- Authentication requirements, rate limiting considerations, and error response patterns.
-- Code examples demonstrating proper usage patterns and integration approaches.
+This document provides a complete API reference for MedAce-AI’s RESTful endpoints that power quiz generation, answer submission, dashboard statistics, and personalized study plan creation. It specifies HTTP methods, URL patterns, request/response schemas, authentication expectations using Supabase JWT tokens, error handling strategies, and practical examples for common workflows. It also includes security best practices, rate limiting considerations, and client integration guidelines.
 
 ## Project Structure
-MedAce AI is a Next.js application with a frontend-first architecture. The current implementation uses client-side mock data for development and includes placeholders for server-side API routes and middleware to integrate Supabase and Google Gemini.
+MedAce-AI exposes Next.js App Router API routes under src/app/api. The relevant endpoints are:
+- POST /api/quiz/generate — Generate practice questions with RAG-backed context
+- POST /api/quiz/submit — Submit answers and compute score
+- GET /api/dashboard/stats — Retrieve user-specific performance stats
+- POST /api/study-plan/generate — Create a personalized 7-day study plan
+- POST /api/quiz/explain — Get bilingual explanations for a question
+
+Authentication is handled via Supabase sessions. Server-side route handlers use the server Supabase client to obtain the current user from the request context (JWT). Unauthenticated requests still return valid responses but with limited or demo data where applicable.
 
 ```mermaid
 graph TB
-Client["Browser (Next.js App)"]
-UI["Pages & Components"]
-Mock["Mock Data Layer<br/>src/lib/mock-data.ts"]
-Types["TypeScript Contracts<br/>src/types/quiz.ts"]
-Middleware["Next.js Middleware<br/>src/middleware.ts"]
-AuthUI["Auth Pages<br/>login/signup"]
-Practice["Practice Flow<br/>practice/[session]"]
-Results["Results Flow<br/>results/[session]"]
-Client --> UI
-UI --> Mock
-UI --> Types
-UI --> AuthUI
-UI --> Practice
-UI --> Results
-Middleware --> |Route protection placeholder| Client
+Client["Client App"] --> QGen["POST /api/quiz/generate"]
+Client --> QSub["POST /api/quiz/submit"]
+Client --> Dash["GET /api/dashboard/stats"]
+Client --> Plan["POST /api/study-plan/generate"]
+Client --> Explain["POST /api/quiz/explain"]
+subgraph "Next.js API Routes"
+QGen
+QSub
+Dash
+Plan
+Explain
+end
+subgraph "Supabase"
+DB["PostgreSQL + pgvector"]
+Auth["Auth (JWT)"]
+end
+QGen --> DB
+QSub --> DB
+Dash --> DB
+Plan --> DB
+Explain --> DB
+QGen -.-> Auth
+QSub -.-> Auth
+Dash -.-> Auth
+Plan -.-> Auth
+Explain -.-> Auth
 ```
 
 **Diagram sources**
-- [src/lib/mock-data.ts:1-313](file://src/lib/mock-data.ts#L1-L313)
-- [src/types/quiz.ts:1-107](file://src/types/quiz.ts#L1-L107)
-- [src/middleware.ts:1-41](file://src/middleware.ts#L1-L41)
-- [src/app/(auth)/login/page.tsx:1-91](file://src/app/(auth)/login/page.tsx#L1-L91)
-- [src/app/(auth)/signup/page.tsx:1-103](file://src/app/(auth)/signup/page.tsx#L1-L103)
-- [src/app/practice/[session]/page.tsx:195-226](file://src/app/practice/[session]/page.tsx#L195-L226)
-- [src/app/results/[session]/page.tsx:258-294](file://src/app/results/[session]/page.tsx#L258-L294)
+- [route.ts:10-195](file://src/app/api/quiz/generate/route.ts#L10-L195)
+- [route.ts:6-140](file://src/app/api/quiz/submit/route.ts#L6-L140)
+- [route.ts:6-180](file://src/app/api/dashboard/stats/route.ts#L6-L180)
+- [route.ts:8-122](file://src/app/api/study-plan/generate/route.ts#L8-L122)
+- [route.ts:6-78](file://src/app/api/quiz/explain/route.ts#L6-L78)
+- [schema.sql:11-109](file://supabase/schema.sql#L11-L109)
 
 **Section sources**
-- [README.md:228-244](file://README.md#L228-L244)
-- [package.json:11-27](file://package.json#L11-L27)
-- [src/middleware.ts:14-35](file://src/middleware.ts#L14-L35)
+- [route.ts:10-195](file://src/app/api/quiz/generate/route.ts#L10-L195)
+- [route.ts:6-140](file://src/app/api/quiz/submit/route.ts#L6-L140)
+- [route.ts:6-180](file://src/app/api/dashboard/stats/route.ts#L6-L180)
+- [route.ts:8-122](file://src/app/api/study-plan/generate/route.ts#L8-L122)
+- [route.ts:6-78](file://src/app/api/quiz/explain/route.ts#L6-L78)
+- [schema.sql:11-109](file://supabase/schema.sql#L11-L109)
 
 ## Core Components
-- Mock Data API: Provides static datasets for topics, questions, sessions, study plans, dashboard stats, recent sessions, and user profiles. Used by practice and results pages to simulate real behavior.
-- Type Contracts: Centralized TypeScript interfaces defining the shape of all API payloads and responses.
-- Authentication Placeholder: Frontend auth context currently returns a mock user; middleware contains a commented block to enforce protected routes via Supabase session cookies when integrated.
-- External Integrations: Environment variables indicate planned use of Supabase (Auth, Database, Storage) and Google Gemini (question generation and Urdu explanations).
-
-Key responsibilities:
-- Quiz Generation: Uses mock questions and sessions; future server-side logic will call Gemini to generate MCQs grounded in textbook content.
-- User Profile Management: Mock profile and chapter performance; future backend will persist via Supabase.
-- Progress Tracking: Tracks answers, time taken, correctness; future backend will store sessions and update weak-spot metrics.
+- Input validation: All endpoints validate payloads using Zod schemas defined in the validations module.
+- Authentication: Endpoints use the server Supabase client to read the current user from the request context (JWT). Protected writes persist only when a user is present; otherwise they proceed without persistence.
+- Data storage: Supabase PostgreSQL tables store sessions, questions, responses, profiles, and study plans. Vector search uses pgvector via an RPC function.
+- AI integration: Gemini models generate MCQs, explanations, and study plans based on prompts and retrieved textbook context.
 
 **Section sources**
-- [src/lib/mock-data.ts:15-313](file://src/lib/mock-data.ts#L15-L313)
-- [src/types/quiz.ts:5-106](file://src/types/quiz.ts#L5-L106)
-- [src/components/auth/AuthProvider.tsx:31-57](file://src/components/auth/AuthProvider.tsx#L31-L57)
-- [src/middleware.ts:14-35](file://src/middleware.ts#L14-L35)
+- [schemas.ts:3-47](file://src/lib/validations/schemas.ts#L3-L47)
+- [route.ts:138-171](file://src/app/api/quiz/generate/route.ts#L138-L171)
+- [route.ts:49-122](file://src/app/api/quiz/submit/route.ts#L49-L122)
+- [route.ts:8-11](file://src/app/api/dashboard/stats/route.ts#L8-L11)
+- [route.ts:95-112](file://src/app/api/study-plan/generate/route.ts#L95-L112)
+- [schema.sql:11-109](file://supabase/schema.sql#L11-L109)
 
 ## Architecture Overview
-The intended architecture integrates three main layers:
-- Frontend: Next.js app with React components and pages.
-- Server-Side API Routes: To be implemented for secure calls to Gemini and Supabase.
-- External Services: Supabase (Auth, Database, Storage) and Google Gemini (text generation and embeddings).
+The API follows a consistent pattern:
+- Validate input with Zod
+- Optionally retrieve vector context via pgvector RPC
+- Call Gemini to generate structured JSON
+- Persist results if authenticated
+- Return typed responses
 
 ```mermaid
 sequenceDiagram
-participant Browser as "Browser"
-participant NextJS as "Next.js App"
-participant API as "API Routes (Server)"
-participant Gemini as "Google Gemini API"
-participant Supabase as "Supabase"
-Browser->>NextJS : "Start Quiz Session"
-NextJS->>API : "POST /api/quiz/generate"
-API->>Gemini : "Generate MCQs + Urdu Explanations"
-Gemini-->>API : "Questions, Options, Answers, Explanations"
-API->>Supabase : "Persist Session & Answers"
-Supabase-->>API : "Session ID, Stats"
-API-->>NextJS : "Quiz Payload"
-NextJS-->>Browser : "Render Questions"
-Note over Browser,Gemini : "Rate limits and retries handled on server side"
+participant C as "Client"
+participant A as "API Route"
+participant V as "Zod Validator"
+participant S as "Supabase (Auth/DB)"
+participant G as "Gemini AI"
+participant P as "pgvector RPC"
+C->>A : POST /api/quiz/generate {chapter, topic, difficulty, count}
+A->>V : Validate payload
+V-->>A : Validated data or 400 error
+A->>P : match_chunks(embedding, chapter filter)
+P-->>A : Relevant chunks
+A->>G : generateJSON(prompt with context)
+G-->>A : Structured questions
+A->>S : Save session & questions (if user)
+A-->>C : QuizSession with questions
 ```
 
 **Diagram sources**
-- [README.md:25-55](file://README.md#L25-L55)
-- [package.json:11-27](file://package.json#L11-L27)
+- [route.ts:10-195](file://src/app/api/quiz/generate/route.ts#L10-L195)
+- [schemas.ts:3-8](file://src/lib/validations/schemas.ts#L3-L8)
+- [schema.sql:116-150](file://supabase/schema.sql#L116-L150)
 
 ## Detailed Component Analysis
 
-### Mock Data API Endpoints
-These are not HTTP endpoints but module exports consumed by pages to simulate API behavior. They provide consistent shapes matching the TypeScript contracts.
-
-- Topics
-  - Purpose: List of MDCAT Biology chapters with category, subtopics count, accuracy, and weakness flags.
-  - Response Shape: Array of Topic objects.
-  - Usage: Dashboard and topic selection.
-  - Example Path: [mockTopics:15-31](file://src/lib/mock-data.ts#L15-L31)
-
-- Weak Topics
-  - Purpose: Identify areas needing more practice based on error and attempt counts.
-  - Response Shape: Array of WeakTopic objects.
-  - Usage: Adaptive planning and insights.
-  - Example Path: [mockWeakTopics:36-42](file://src/lib/mock-data.ts#L36-L42)
-
-- Dashboard Stats
-  - Purpose: High-level metrics like total questions, weekly activity, accuracy, sessions completed, streak.
-  - Response Shape: DashboardStats object.
-  - Usage: Dashboard overview.
-  - Example Path: [mockDashboardStats:47-53](file://src/lib/mock-data.ts#L47-L53)
-
-- Recent Sessions
-  - Purpose: History of quiz sessions with scores and dates.
-  - Response Shape: Array of RecentSession objects.
-  - Usage: Recent activity feed.
-  - Example Path: [mockRecentSessions:58-64](file://src/lib/mock-data.ts#L58-L64)
-
-- Questions
-  - Purpose: MCQ set for a session with options, correct answer, English and Urdu explanations, difficulty, and topic.
-  - Response Shape: Array of Question objects.
-  - Usage: Practice page rendering and evaluation.
-  - Example Path: [mockQuestions:69-210](file://src/lib/mock-data.ts#L69-L210)
-
-- Quiz Session
-  - Purpose: In-progress or completed session metadata, questions, and answers.
-  - Response Shape: QuizSession object.
-  - Usage: Practice flow state and results display.
-  - Example Paths: [mockQuizSession:215-227](file://src/lib/mock-data.ts#L215-L227), [mockCompletedSession:232-256](file://src/lib/mock-data.ts#L232-L256)
-
-- Study Plan
-  - Purpose: Weekly plan with daily topics, estimated minutes, status, difficulty, and question counts.
-  - Response Shape: StudyPlan object.
-  - Usage: Study-plan page and adaptive recommendations.
-  - Example Path: [mockStudyPlan:261-281](file://src/lib/mock-data.ts#L261-L281)
-
-- User Profile
-  - Purpose: User identity, membership date, totals, overall accuracy, best/worst topics, longest streak, chapter performance.
-  - Response Shape: UserProfile object.
-  - Usage: Profile page and analytics.
-  - Example Path: [mockUserProfile:286-312](file://src/lib/mock-data.ts#L286-L312)
-
-Authentication Requirements:
-- Currently, mock data is accessible without authentication in development. When wired to backend, protect these endpoints using Supabase session tokens.
-
-Rate Limiting:
-- Not implemented in mock layer. Apply server-side rate limiting when exposing API routes.
-
-Error Responses:
-- Mock layer does not return errors. Implement standardized error envelopes on server routes (e.g., { error: string, code: number }).
-
-Code Examples:
-- Consuming mock data in pages:
-  - Import from src/lib/mock-data.ts and bind to local state or TanStack Query.
-  - See usage in practice and results pages for rendering questions and toggling Urdu explanations.
-
-**Section sources**
-- [src/lib/mock-data.ts:15-313](file://src/lib/mock-data.ts#L15-L313)
-- [src/types/quiz.ts:5-106](file://src/types/quiz.ts#L5-L106)
-- [src/app/practice/[session]/page.tsx:195-226](file://src/app/practice/[session]/page.tsx#L195-L226)
-- [src/app/results/[session]/page.tsx:258-294](file://src/app/results/[session]/page.tsx#L258-L294)
-
-### Google Gemini Integration
-Purpose:
-- Generate high-quality MCQs grounded in textbook content.
-- Create bilingual explanations (English and Urdu) tailored to student needs.
-
-Request Schema (server-side):
-- Input fields:
+### Endpoint: Generate Quiz Questions
+- Method: POST
+- Path: /api/quiz/generate
+- Authentication: Optional. If authenticated, creates a quiz session and persists questions. Otherwise, returns generated questions without persistence.
+- Request body schema:
+  - chapter: string | number
+  - topic: string (required)
+  - difficulty: enum ["Easy", "Medium", "Hard", "Mixed"] (default "Mixed")
+  - count: integer 1..100 (default 20)
+- Response schema:
+  - id: string (session ID)
   - topic: string
-  - difficulty: "Easy" | "Medium" | "Hard" | "Mixed"
+  - chapterNum: number
+  - difficulty: enum
   - numQuestions: number
-  - language: "en" | "ur" | "mixed"
-  - contextChunks: string[] (optional, retrieved from RAG pipeline)
+  - totalQuestions: number
+  - status: "in-progress"
+  - createdAt: string (ISO timestamp)
+  - questions: array of Question objects
+  - answers: array (initially empty)
+- Error handling:
+  - 400: Invalid request payload (validation errors)
+  - 500: Internal server error (AI or DB failure)
+- Notes:
+  - Uses textbook content and optional pgvector retrieval to ground generation.
+  - Falls back to local chapter question generator if AI fails.
 
-Response Schema (server-side):
-- Output fields:
-  - questions: Question[]
+Example request:
+{
+  "chapter": 2,
+  "topic": "Blood Circulatory System",
+  "difficulty": "Medium",
+  "count": 20
+}
+
+Example response:
+{
+  "id": "uuid-session-id",
+  "topic": "Blood Circulatory System",
+  "chapterNum": 2,
+  "difficulty": "Medium",
+  "numQuestions": 20,
+  "totalQuestions": 20,
+  "status": "in-progress",
+  "createdAt": "2025-01-01T12:00:00.000Z",
+  "questions": [
+    {
+      "id": "uuid-question-id",
+      "sessionId": "uuid-session-id",
+      "questionText": "...",
+      "optionA": "...",
+      "optionB": "...",
+      "optionC": "...",
+      "optionD": "...",
+      "correctAnswer": "A",
+      "explanationEn": "...",
+      "explanationUr": "...",
+      "difficulty": "Medium",
+      "topic": "Blood Circulatory System"
+    }
+  ],
+  "answers": []
+}
+
+**Section sources**
+- [route.ts:10-195](file://src/app/api/quiz/generate/route.ts#L10-L195)
+- [schemas.ts:3-8](file://src/lib/validations/schemas.ts#L3-L8)
+- [quiz.ts:15-50](file://src/types/quiz.ts#L15-L50)
+
+### Endpoint: Submit Answers
+- Method: POST
+- Path: /api/quiz/submit
+- Authentication: Optional. If authenticated, records responses, updates session status, and refreshes profile metrics.
+- Request body schema:
+  - sessionId: string (required)
+  - answers: array of AnswerSubmission
+    - questionId: string (required)
+    - selectedAnswer: enum ["A","B","C","D"] | null
+    - isCorrect: boolean (default false)
+    - timeTakenMs: number >= 0 (default 0)
+  - timeTakenMs: number >= 0 (optional)
+- Response schema:
   - sessionId: string
-  - generatedAt: string (ISO timestamp)
+  - score: number (count of correct answers)
+  - totalQuestions: number
+  - accuracy: number (percentage)
+  - status: "completed"
+  - timeTakenMs: number
+- Error handling:
+  - 400: Invalid submission data
+  - 500: Internal server error
+- Notes:
+  - Verifies correctness against stored correct answers when available.
+  - Updates streak, totals, and overall accuracy for authenticated users.
 
-Error Handling:
-- Handle network timeouts and rate limits with retries and backoff.
-- Validate model output against Zod schema before returning to client.
-- Return structured errors with codes and messages.
+Example request:
+{
+  "sessionId": "uuid-session-id",
+  "answers": [
+    {"questionId": "uuid-q1", "selectedAnswer": "A", "isCorrect": true, "timeTakenMs": 12000},
+    {"questionId": "uuid-q2", "selectedAnswer": "B", "isCorrect": false, "timeTakenMs": 15000}
+  ],
+  "timeTakenMs": 27000
+}
 
-Integration Notes:
-- Use environment variable GEMINI_API_KEY securely on the server.
-- Cache frequently requested topics to reduce API costs.
-- Stream responses if supported to improve perceived latency.
-
-Code Examples:
-- Server function calling Gemini to generate questions and explanations.
-- Client calling /api/quiz/generate and rendering results.
-
-**Section sources**
-- [README.md:228-244](file://README.md#L228-L244)
-- [package.json:11-27](file://package.json#L11-L27)
-
-### Supabase Integration
-Purpose:
-- Authentication (email/password and Google OAuth).
-- Database operations (sessions, answers, user profiles, weak-topic metrics).
-- File storage (user avatars, documents).
-
-Authentication:
-- Use Supabase Auth with email/password and Google OAuth flows.
-- Store session in cookies and validate via middleware for protected routes.
-
-Database Operations:
-- Persist quiz sessions, answers, and progress metrics.
-- Update weak-topic scores and chapter performance arrays.
-
-File Storage:
-- Upload and retrieve user avatars and study materials.
-
-Environment Variables:
-- NEXT_PUBLIC_SUPABASE_URL
-- NEXT_PUBLIC_SUPABASE_ANON_KEY
-- SUPABASE_SERVICE_ROLE_KEY
-- DATABASE_URL
-
-Rate Limiting:
-- Apply server-side rate limiting on Supabase calls where appropriate.
-
-Error Handling:
-- Normalize Supabase errors into standard API error responses.
-
-Code Examples:
-- Initialize Supabase client in server functions.
-- Create session and record answers.
-- Fetch user profile and stats.
+Example response:
+{
+  "sessionId": "uuid-session-id",
+  "score": 1,
+  "totalQuestions": 2,
+  "accuracy": 50,
+  "status": "completed",
+  "timeTakenMs": 27000
+}
 
 **Section sources**
-- [README.md:228-244](file://README.md#L228-L244)
-- [src/middleware.ts:22-33](file://src/middleware.ts#L22-L33)
-- [src/components/auth/AuthProvider.tsx:31-57](file://src/components/auth/AuthProvider.tsx#L31-L57)
+- [route.ts:6-140](file://src/app/api/quiz/submit/route.ts#L6-L140)
+- [schemas.ts:12-23](file://src/lib/validations/schemas.ts#L12-L23)
+- [quiz.ts:30-50](file://src/types/quiz.ts#L30-L50)
 
-### Authentication and Route Protection
-Current State:
-- Frontend auth context returns a mock user for development.
-- Middleware defines protected routes and includes a commented block to enforce Supabase session checks.
+### Endpoint: Dashboard Statistics
+- Method: GET
+- Path: /api/dashboard/stats
+- Authentication: Optional. Returns real user stats if authenticated; otherwise returns demo structure.
+- Response schema:
+  - stats: DashboardStats
+    - totalQuestions: number
+    - questionsThisWeek: number
+    - accuracyRate: number
+    - sessionsCompleted: number
+    - studyStreak: number
+  - recentSessions: array of RecentSession
+  - weakTopics: array of WeakTopic
+  - profile: UserProfile
+- Error handling:
+  - 500: Internal server error
+- Notes:
+  - Aggregates completed sessions and user responses to compute weak topics and chapter performance.
+  - Computes weekly question counts and accuracy rates.
 
-Protected Routes:
-- /dashboard, /practice, /results, /study-plan, /profile
-
-Public Routes:
-- /, /login, /signup
-
-Implementation Guidance:
-- Enable cookie-based session validation in middleware.
-- Redirect unauthenticated users to login with redirect parameter.
-
-Code Examples:
-- Login and signup pages include Google OAuth buttons and forms ready for Supabase integration.
+Example response (unauthenticated):
+{
+  "stats": {
+    "totalQuestions": 0,
+    "questionsThisWeek": 0,
+    "accuracyRate": 0,
+    "sessionsCompleted": 0,
+    "studyStreak": 0
+  },
+  "recentSessions": [],
+  "weakTopics": [],
+  "profile": {
+    "id": "demo-user-id",
+    "fullName": "Medical Student",
+    "email": "student@medace.ai",
+    "memberSince": "Recent",
+    "totalQuestions": 0,
+    "totalSessions": 0,
+    "overallAccuracy": 0,
+    "bestTopic": "N/A",
+    "worstTopic": "N/A",
+    "longestStreak": 0,
+    "chapterPerformance": []
+  }
+}
 
 **Section sources**
-- [src/middleware.ts:4-35](file://src/middleware.ts#L4-L35)
-- [src/app/(auth)/login/page.tsx:25-75](file://src/app/(auth)/login/page.tsx#L25-L75)
-- [src/app/(auth)/signup/page.tsx:25-87](file://src/app/(auth)/signup/page.tsx#L25-L87)
-- [src/components/auth/AuthProvider.tsx:31-57](file://src/components/auth/AuthProvider.tsx#L31-L57)
+- [route.ts:6-180](file://src/app/api/dashboard/stats/route.ts#L6-L180)
+- [quiz.ts:78-106](file://src/types/quiz.ts#L78-L106)
+
+### Endpoint: Generate Study Plan
+- Method: POST
+- Path: /api/study-plan/generate
+- Authentication: Optional. If authenticated, saves plan and updates target exam date on profile.
+- Request body schema:
+  - targetExamDate: string formatted YYYY-MM-DD (required)
+  - weakTopics: array of strings (optional)
+- Response schema:
+  - id: string (plan ID)
+  - weekNumber: number
+  - rationale: string
+  - insights: array of strings
+  - days: array of StudyPlanDay
+    - day: string ("Day 1" .. "Day 7")
+    - date: string (YYYY-MM-DD)
+    - topics: array of strings
+    - estimatedMinutes: number
+    - status: enum ["completed","today","upcoming"]
+    - difficulty: enum ["Easy","Medium","Hard","Mixed"]
+    - questionCount: number
+- Error handling:
+  - 400: Invalid study plan request
+  - 500: Internal server error
+- Notes:
+  - Defaults to focus areas when weakTopics not provided.
+  - Persists plan data to study_plans table for authenticated users.
+
+Example request:
+{
+  "targetExamDate": "2026-06-01",
+  "weakTopics": ["Nervous System of Man", "Endocrine System of Man"]
+}
+
+Example response:
+{
+  "id": "uuid-plan-id",
+  "weekNumber": 1,
+  "rationale": "Personalized study plan tailored to MDCAT syllabus and weak spots.",
+  "insights": [
+    "Focus on active recall when reviewing Nervous System concepts.",
+    "Solve timed 15-question blocks for high-yield retention.",
+    "Review Urdu explanations for complex biological terms."
+  ],
+  "days": [
+    {
+      "day": "Day 1",
+      "date": "2025-09-01",
+      "topics": ["Nervous System of Man"],
+      "estimatedMinutes": 120,
+      "status": "today",
+      "difficulty": "Hard",
+      "questionCount": 20
+    }
+  ]
+}
+
+**Section sources**
+- [route.ts:8-122](file://src/app/api/study-plan/generate/route.ts#L8-L122)
+- [schemas.ts:42-45](file://src/lib/validations/schemas.ts#L42-L45)
+- [quiz.ts:60-76](file://src/types/quiz.ts#L60-L76)
+
+### Endpoint: Explain Question
+- Method: POST
+- Path: /api/quiz/explain
+- Authentication: Not required for explanation generation.
+- Request body schema:
+  - questionId: string (optional)
+  - questionText: string (required)
+  - options: object with keys A, B, C, D (each string, required)
+  - correctAnswer: enum ["A","B","C","D"] (required)
+  - topic: string (optional)
+- Response schema:
+  - explanationEn: string
+  - explanationUr: string
+- Error handling:
+  - 400: Invalid explanation request
+  - 500: Internal server error
+- Notes:
+  - Uses vector similarity search to retrieve relevant textbook context before generating bilingual explanations.
+
+Example request:
+{
+  "questionText": "Which enzyme catalyzes the conversion of glucose to glucose-6-phosphate?",
+  "options": {
+    "A": "Hexokinase",
+    "B": "Glucokinase",
+    "C": "Phosphofructokinase",
+    "D": "Pyruvate kinase"
+  },
+  "correctAnswer": "A",
+  "topic": "Metabolism"
+}
+
+Example response:
+{
+  "explanationEn": "Hexokinase phosphorylates glucose to glucose-6-phosphate using ATP...",
+  "explanationUr": "ہیکسوکائیز گلوکوز کو گلوکوز-6-فاسفیٹ میں تبدیل کرتا ہے..."
+}
+
+**Section sources**
+- [route.ts:6-78](file://src/app/api/quiz/explain/route.ts#L6-L78)
+- [schemas.ts:27-38](file://src/lib/validations/schemas.ts#L27-L38)
 
 ## Dependency Analysis
-External dependencies relevant to APIs and integrations:
-- @supabase/supabase-js and @supabase/ssr for authentication and SSR support.
-- @google/generative-ai for Gemini integration.
-- drizzle-orm and postgres for database access.
-- zod for runtime validation of API payloads.
+- Validation layer: Zod schemas enforce strict contracts for all endpoints.
+- Database layer: Supabase PostgreSQL stores sessions, questions, responses, profiles, and study plans. Row-level security policies restrict access by user_id.
+- Vector layer: pgvector enables semantic search over textbook chunks via an RPC function used during generation and explanation flows.
+- AI layer: Gemini generates structured outputs (MCQs, explanations, study plans) based on prompts enriched with retrieved context.
 
 ```mermaid
 graph LR
-App["Next.js App"]
-Supabase["@supabase/supabase-js"]
-Gemini["@google/generative-ai"]
-Drizzle["drizzle-orm"]
-Postgres["postgres"]
-Zod["zod"]
-App --> Supabase
-App --> Gemini
-App --> Drizzle
-Drizzle --> Postgres
-App --> Zod
+Z["Zod Schemas"] --> R1["/api/quiz/generate"]
+Z --> R2["/api/quiz/submit"]
+Z --> R3["/api/study-plan/generate"]
+Z --> R4["/api/quiz/explain"]
+R1 --> DB["Supabase Tables"]
+R2 --> DB
+R3 --> DB
+R4 --> DB
+R1 --> V["pgvector RPC"]
+R4 --> V
+R1 --> G["Gemini AI"]
+R4 --> G
+R3 --> G
 ```
 
 **Diagram sources**
-- [package.json:11-27](file://package.json#L11-L27)
+- [schemas.ts:3-47](file://src/lib/validations/schemas.ts#L3-L47)
+- [route.ts:10-195](file://src/app/api/quiz/generate/route.ts#L10-L195)
+- [route.ts:6-140](file://src/app/api/quiz/submit/route.ts#L6-L140)
+- [route.ts:8-122](file://src/app/api/study-plan/generate/route.ts#L8-L122)
+- [route.ts:6-78](file://src/app/api/quiz/explain/route.ts#L6-L78)
+- [schema.sql:116-150](file://supabase/schema.sql#L116-L150)
 
 **Section sources**
-- [package.json:11-27](file://package.json#L11-L27)
+- [schemas.ts:3-47](file://src/lib/validations/schemas.ts#L3-L47)
+- [schema.sql:11-109](file://supabase/schema.sql#L11-L109)
+- [schema.sql:116-150](file://supabase/schema.sql#L116-L150)
 
 ## Performance Considerations
-- Caching: Cache Gemini-generated questions per topic/difficulty to reduce cost and latency.
-- Pagination: Paginate large datasets (questions, sessions) to minimize payload size.
-- Streaming: Stream Gemini responses where possible to improve UX.
-- Debouncing: Debounce input changes in search/filter features.
-- Error Retries: Implement exponential backoff for external API calls.
+- Vector search tuning: match_threshold and match_count influence latency and relevance. Adjust per endpoint needs.
+- AI call batching: Each endpoint may call Gemini once; consider caching repeated prompts or contexts where appropriate.
+- Database indexing: Ensure indexes on frequently queried fields (user_id, session_id, created_at) to optimize dashboard aggregation.
+- Payload size: Limit question counts to reasonable ranges (e.g., up to 100) to avoid large payloads and long processing times.
+- Timeouts: Implement client-side timeouts and retries for AI-dependent endpoints.
 
 [No sources needed since this section provides general guidance]
 
 ## Troubleshooting Guide
-Common Issues and Resolutions:
-- Missing Environment Variables: Ensure NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL, and GEMINI_API_KEY are set.
-- Authentication Failures: Verify Supabase project settings and OAuth providers configured. Check middleware redirection logic.
-- Gemini Rate Limits: Implement retry with backoff and fallback to cached questions.
-- Database Errors: Validate connection strings and permissions; log detailed errors server-side.
+Common issues and resolutions:
+- 400 Validation errors: Check request payload against schemas. Ensure enums and formats match exactly.
+- 500 Internal server errors: Inspect logs for AI or database failures. Verify environment variables for Supabase and Gemini.
+- Missing persistence: If not authenticated, data will not be saved. Ensure Supabase session is active for write operations.
+- Incorrect correctness: Submitting answers relies on stored correct answers; verify question IDs and correct_answer values.
 
-Validation:
-- Use Zod to validate incoming requests and outgoing responses.
-- Log validation failures with field-specific messages.
+Error response format:
+{
+  "error": "Invalid request payload",
+  "details": [...]
+}
+or
+{
+  "error": "Internal Server Error",
+  "message": "..."
+}
 
 **Section sources**
-- [README.md:228-244](file://README.md#L228-L244)
-- [src/middleware.ts:22-33](file://src/middleware.ts#L22-L33)
+- [route.ts:15-20](file://src/app/api/quiz/generate/route.ts#L15-L20)
+- [route.ts:11-16](file://src/app/api/quiz/submit/route.ts#L11-L16)
+- [route.ts:13-17](file://src/app/api/study-plan/generate/route.ts#L13-L17)
+- [route.ts:11-16](file://src/app/api/quiz/explain/route.ts#L11-L16)
+- [route.ts:188-193](file://src/app/api/quiz/generate/route.ts#L188-L193)
+- [route.ts:133-139](file://src/app/api/quiz/submit/route.ts#L133-L139)
+- [route.ts:173-179](file://src/app/api/dashboard/stats/route.ts#L173-L179)
+- [route.ts:115-121](file://src/app/api/study-plan/generate/route.ts#L115-L121)
+- [route.ts:71-77](file://src/app/api/quiz/explain/route.ts#L71-L77)
 
 ## Conclusion
-MedAce AI’s current implementation provides a robust mock data layer and type-safe contracts for development. The architecture is designed to integrate Supabase for authentication, database, and storage, and Google Gemini for AI-powered question generation and bilingual explanations. When server-side API routes are implemented, they should enforce authentication, handle rate limiting, and provide standardized error responses. The TypeScript interfaces ensure consistency across the stack and facilitate seamless transitions from mock to production APIs.
+MedAce-AI’s API provides robust, validated endpoints for generating practice questions, submitting answers, retrieving dashboard statistics, and creating personalized study plans. Authentication is integrated via Supabase JWT tokens, enabling secure persistence and personalization. Follow the schemas and error handling patterns outlined here to integrate clients reliably. For production, implement rate limiting, monitor AI and DB performance, and ensure proper error propagation and retries.
 
 [No sources needed since this section summarizes without analyzing specific files]
-
-## Appendices
-
-### TypeScript Interfaces Summary
-- Topic: Chapter metadata with category, subtopics, accuracy, weakness flag.
-- Question: MCQ with options, correct answer, explanations in English and Urdu, difficulty, topic.
-- UserAnswer: Answer record with selected option, correctness, and time taken.
-- QuizSession: Session metadata, questions, answers, score, status.
-- WeakTopic: Topic weakness metrics.
-- StudyPlanDay: Daily plan entry with topics, duration, status, difficulty, question count.
-- StudyPlan: Weekly plan with rationale and insights.
-- DashboardStats: Aggregated metrics for dashboard.
-- RecentSession: Historical session entries.
-- UserProfile: User identity and performance summary.
-
-**Section sources**
-- [src/types/quiz.ts:5-106](file://src/types/quiz.ts#L5-L106)
-
-### Mock Data Usage Patterns
-- Practice Flow:
-  - Load mockQuizSession and render questions.
-  - Toggle Urdu explanations per question.
-  - Record answers and compute score.
-- Results Flow:
-  - Display mockCompletedSession with answers and explanations.
-  - Show weak-spot updates and insights.
-
-**Section sources**
-- [src/lib/mock-data.ts:215-256](file://src/lib/mock-data.ts#L215-L256)
-- [src/app/practice/[session]/page.tsx:195-226](file://src/app/practice/[session]/page.tsx#L195-L226)
-- [src/app/results/[session]/page.tsx:258-294](file://src/app/results/[session]/page.tsx#L258-L294)
-
-### Environment Configuration
-Required environment variables:
-- NEXT_PUBLIC_SUPABASE_URL
-- NEXT_PUBLIC_SUPABASE_ANON_KEY
-- SUPABASE_SERVICE_ROLE_KEY
-- DATABASE_URL
-- GEMINI_API_KEY
-- NEXT_PUBLIC_APP_URL
-
-**Section sources**
-- [README.md:228-244](file://README.md#L228-L244)

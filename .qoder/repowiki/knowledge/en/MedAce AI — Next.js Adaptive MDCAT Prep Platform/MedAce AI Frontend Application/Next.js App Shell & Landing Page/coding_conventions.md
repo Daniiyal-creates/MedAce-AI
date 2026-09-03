@@ -1,0 +1,5 @@
+- Each landing-page section is a self-contained function component that owns its own data arrays (problems, features, steps, stats) and renders via `.map`, keeping content declarative and localized.
+- Scroll-triggered animations are implemented uniformly with `framer-motion`'s `useInView` hook using `{ once: true, margin: '-100px' }` and `motion.div` with `initial`/`animate` transitions keyed off the `inView` boolean.
+- Staggered entrance effects use a shared `fadeUp` variant combined with a `stagger` parent and a `custom` index prop passed to each child to sequence animations.
+- Global styling is centralized in `globals.css` under `@layer base` and `@layer utilities`, with all colors, fonts, and semantic tokens declared as CSS custom properties inside a single `@theme inline` block rather than scattered config files.
+- Route protection is configured declaratively via a `protectedRoutes` array matched against `request.nextUrl.pathname` with both exact-match and prefix-match (`startsWith(route + '/')`) checks.

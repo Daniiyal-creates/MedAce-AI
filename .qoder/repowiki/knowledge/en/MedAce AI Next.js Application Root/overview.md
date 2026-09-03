@@ -1,1 +1,0 @@
-Root configuration for MedAce AI, a Next.js 15 full-stack app that delivers adaptive MDCAT prep with Gemini-powered MCQ generation and Urdu explanations backed by Supabase PostgreSQL.

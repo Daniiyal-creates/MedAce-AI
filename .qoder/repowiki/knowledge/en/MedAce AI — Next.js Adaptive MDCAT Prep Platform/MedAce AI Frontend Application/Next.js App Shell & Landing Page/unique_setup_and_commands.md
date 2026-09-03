@@ -1,0 +1,1 @@
+The middleware currently bypasses authentication — enabling real protection requires uncommenting the Supabase cookie check and ensuring a `sb-access-token` cookie is set by the auth flow.

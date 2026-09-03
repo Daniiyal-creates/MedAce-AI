@@ -2,20 +2,19 @@
 
 <cite>
 **Referenced Files in This Document**
-- [package.json](file://package.json)
 - [README.md](file://README.md)
+- [package.json](file://package.json)
 - [next.config.ts](file://next.config.ts)
-- [src/app/layout.tsx](file://src/app/layout.tsx)
 - [src/middleware.ts](file://src/middleware.ts)
-- [src/components/Providers.tsx](file://src/components/Providers.tsx)
-- [src/components/layout/AppLayout.tsx](file://src/components/layout/AppLayout.tsx)
-- [src/components/layout/Navbar.tsx](file://src/components/layout/Navbar.tsx)
-- [src/components/layout/Sidebar.tsx](file://src/components/layout/Sidebar.tsx)
-- [src/app/page.tsx](file://src/app/page.tsx)
-- [src/app/dashboard/page.tsx](file://src/app/dashboard/page.tsx)
-- [src/app/practice/page.tsx](file://src/app/practice/page.tsx)
+- [supabase/schema.sql](file://supabase/schema.sql)
+- [src/app/api/quiz/generate/route.ts](file://src/app/api/quiz/generate/route.ts)
+- [src/app/api/dashboard/stats/route.ts](file://src/app/api/dashboard/stats/route.ts)
+- [src/lib/textbook-reader.ts](file://src/lib/textbook-reader.ts)
+- [src/lib/progress-tracker.ts](file://src/lib/progress-tracker.ts)
+- [src/lib/study-plan-generator.ts](file://src/lib/study-plan-generator.ts)
+- [scripts/ingest-textbooks.ts](file://scripts/ingest-textbooks.ts)
 - [src/types/quiz.ts](file://src/types/quiz.ts)
-- [src/lib/mock-data.ts](file://src/lib/mock-data.ts)
+- [src/app/auth/callback/route.ts](file://src/app/auth/callback/route.ts)
 </cite>
 
 ## Table of Contents
@@ -28,451 +27,387 @@
 7. Performance Considerations
 8. Troubleshooting Guide
 9. Conclusion
+10. Appendices
 
 ## Introduction
-MedAce AI is an adaptive MDCAT prep coach that delivers authentic English MCQs with optional Urdu explanations, weak-spot tracking, and RAG-powered question generation grounded in real textbook content. The system combines a Next.js 15 frontend (React 19), Supabase backend services (PostgreSQL + pgvector), and Google Gemini AI for generation and embeddings. It emphasizes type safety (TypeScript), utility-first styling (Tailwind CSS v4), robust state management (TanStack Query), and type-safe database operations (Drizzle ORM).
+MedAce AI is a full-stack, Next.js-based adaptive preparation platform for the MDCAT exam. It combines a React frontend with server-side API routes, Supabase-backed persistence (PostgreSQL + pgvector), and Google Gemini AI to generate syllabus-grounded MCQs and explanations. The system uses Retrieval-Augmented Generation (RAG) over textbook content to ensure questions are accurate and aligned with the curriculum. Authentication flows through Supabase OAuth, while state management on the client leverages TanStack Query for caching and optimistic updates.
 
 ## Project Structure
-The application follows a feature-oriented layout under src/app with shared UI components, layout wrappers, and client providers. Pages include a landing page, dashboard, practice, results, study plan, and profile. Client-side providers configure TanStack Query and toast notifications. Layout components provide consistent navigation and app shell.
+The repository follows a feature-oriented monorepo layout:
+- Frontend pages and UI components live under src/app and src/components.
+- Server-side logic is implemented as Next.js API routes under src/app/api.
+- Business logic utilities are centralized in src/lib (textbook reader, progress tracker, study plan generator).
+- Data ingestion scripts reside under scripts for building the vector index from textbook files.
+- Database schema and RLS policies are defined in supabase/schema.sql.
 
 ```mermaid
 graph TB
-A["Next.js App Router<br/>src/app/*"] --> B["Root Layout<br/>src/app/layout.tsx"]
-B --> C["Client Providers<br/>src/components/Providers.tsx"]
-A --> D["Landing Page<br/>src/app/page.tsx"]
-A --> E["Dashboard Page<br/>src/app/dashboard/page.tsx"]
-A --> F["Practice Page<br/>src/app/practice/page.tsx"]
-C --> G["App Shell<br/>src/components/layout/AppLayout.tsx"]
-G --> H["Navbar<br/>src/components/layout/Navbar.tsx"]
-G --> I["Sidebar<br/>src/components/layout/Sidebar.tsx"]
+subgraph "Frontend"
+A["Next.js App Router Pages"]
+B["React Components"]
+end
+subgraph "Server"
+C["API Routes"]
+D["Business Logic (lib)"]
+end
+subgraph "Data & AI"
+E["Supabase PostgreSQL + pgvector"]
+F["Google Gemini APIs"]
+end
+A --> C
+B --> C
+C --> D
+C --> E
+C --> F
 ```
 
 **Diagram sources**
-- [src/app/layout.tsx:1-57](file://src/app/layout.tsx#L1-L57)
-- [src/components/Providers.tsx:1-23](file://src/components/Providers.tsx#L1-L23)
-- [src/app/page.tsx:1-418](file://src/app/page.tsx#L1-L418)
-- [src/app/dashboard/page.tsx:1-239](file://src/app/dashboard/page.tsx#L1-L239)
-- [src/app/practice/page.tsx:1-196](file://src/app/practice/page.tsx#L1-L196)
-- [src/components/layout/AppLayout.tsx:1-25](file://src/components/layout/AppLayout.tsx#L1-L25)
-- [src/components/layout/Navbar.tsx:1-162](file://src/components/layout/Navbar.tsx#L1-L162)
-- [src/components/layout/Sidebar.tsx:1-74](file://src/components/layout/Sidebar.tsx#L1-L74)
+- [README.md:27-83](file://README.md#L27-L83)
+- [src/app/api/quiz/generate/route.ts:1-196](file://src/app/api/quiz/generate/route.ts#L1-L196)
+- [src/app/api/dashboard/stats/route.ts:1-181](file://src/app/api/dashboard/stats/route.ts#L1-L181)
 
 **Section sources**
-- [src/app/layout.tsx:1-57](file://src/app/layout.tsx#L1-L57)
-- [src/components/Providers.tsx:1-23](file://src/components/Providers.tsx#L1-L23)
-- [src/app/page.tsx:1-418](file://src/app/page.tsx#L1-L418)
-- [src/app/dashboard/page.tsx:1-239](file://src/app/dashboard/page.tsx#L1-L239)
-- [src/app/practice/page.tsx:1-196](file://src/app/practice/page.tsx#L1-L196)
-- [src/components/layout/AppLayout.tsx:1-25](file://src/components/layout/AppLayout.tsx#L1-L25)
-- [src/components/layout/Navbar.tsx:1-162](file://src/components/layout/Navbar.tsx#L1-L162)
-- [src/components/layout/Sidebar.tsx:1-74](file://src/components/layout/Sidebar.tsx#L1-L74)
+- [README.md:170-253](file://README.md#L170-L253)
+- [package.json:11-28](file://package.json#L11-L28)
 
 ## Core Components
-- Root layout sets metadata, fonts, and wraps the app with Providers to initialize global state and UI context.
-- Providers configures TanStack Query with default caching and retry options and provides Toast context.
-- AppLayout composes Navbar and Sidebar for authenticated app pages.
-- Landing page presents value propositions, features, and calls to action using reusable UI primitives.
-- Dashboard displays stats, weak topics, recent sessions, and quick-start links.
-- Practice page enables topic selection, filtering, and session configuration modal.
-
-Key technology decisions:
-- TypeScript for end-to-end type safety across types and data models.
-- Tailwind CSS v4 for utility-first styling and theme tokens.
-- TanStack Query for server state caching and optimistic updates.
-- Drizzle ORM for type-safe database queries and migrations.
-- Supabase Auth and PostgreSQL with pgvector for auth, persistence, and vector search.
-- Google Gemini for generation and embeddings.
+- Next.js App Router API routes handle authentication callbacks, quiz generation, and dashboard statistics.
+- Supabase clients provide authenticated and admin access for data operations.
+- Gemini integration performs embeddings and structured JSON generation for MCQs.
+- Textbook reader loads chapter content for context during question generation.
+- Progress tracker aggregates local or remote session data into actionable metrics.
+- Study plan generator builds weekly plans based on weak topics and performance insights.
 
 **Section sources**
-- [src/app/layout.tsx:1-57](file://src/app/layout.tsx#L1-L57)
-- [src/components/Providers.tsx:1-23](file://src/components/Providers.tsx#L1-L23)
-- [src/components/layout/AppLayout.tsx:1-25](file://src/components/layout/AppLayout.tsx#L1-L25)
-- [src/app/page.tsx:1-418](file://src/app/page.tsx#L1-L418)
-- [src/app/dashboard/page.tsx:1-239](file://src/app/dashboard/page.tsx#L1-L239)
-- [src/app/practice/page.tsx:1-196](file://src/app/practice/page.tsx#L1-L196)
-- [package.json:11-27](file://package.json#L11-L27)
-- [README.md:23-77](file://README.md#L23-L77)
+- [src/app/api/quiz/generate/route.ts:1-196](file://src/app/api/quiz/generate/route.ts#L1-L196)
+- [src/app/api/dashboard/stats/route.ts:1-181](file://src/app/api/dashboard/stats/route.ts#L1-L181)
+- [src/lib/textbook-reader.ts:1-46](file://src/lib/textbook-reader.ts#L1-L46)
+- [src/lib/progress-tracker.ts:1-192](file://src/lib/progress-tracker.ts#L1-L192)
+- [src/lib/study-plan-generator.ts:1-102](file://src/lib/study-plan-generator.ts#L1-L102)
 
 ## Architecture Overview
-High-level architecture shows the browser-based Next.js app interacting with Supabase services and Google Gemini APIs. Security headers are enforced at the framework level. Middleware guards protected routes. Data flows from the UI through API routes (server-side) to Supabase and Gemini, then back to the client via TanStack Query.
+High-level flow:
+- Client requests trigger Next.js API routes.
+- Routes validate inputs, optionally retrieve relevant textbook chunks via pgvector similarity search, and call Gemini to generate MCQs.
+- Generated sessions and questions are persisted using Supabase.
+- Dashboard stats aggregate user performance from database tables.
+- Authentication callback exchanges OAuth codes for sessions and redirects users.
 
 ```mermaid
-graph TB
-subgraph "Browser"
-UI["Next.js 15 App<br/>React 19 + Tailwind v4"]
-MQ["TanStack Query Cache"]
-end
-subgraph "Server Runtime"
-MW["Middleware<br/>Route Guards"]
-SEC["Security Headers<br/>X-Frame-Options, Referrer-Policy, etc."]
-end
-subgraph "Backend Services"
-SUPA["Supabase<br/>Auth / Storage / PostgreSQL"]
-PGV["pgvector<br/>Textbook Embeddings"]
-end
-subgraph "AI Services"
-GEM["Google Gemini<br/>Generation & Embeddings"]
-end
-UI --> MQ
-UI --> MW
-MW --> SEC
-UI --> SUPA
-UI --> GEM
-SUPA --> PGV
-GEM --> SUPA
+sequenceDiagram
+participant U as "User Browser"
+participant N as "Next.js API Route"
+participant S as "Supabase (Auth/DB)"
+participant V as "pgvector RPC"
+participant G as "Gemini API"
+U->>N : POST /api/quiz/generate
+N->>S : Create quiz session (if authenticated)
+N->>G : Generate embedding for topic+chapter
+N->>V : match_chunks(query_embedding, filter_chapter)
+V-->>N : Top relevant textbook chunks
+N->>G : Generate JSON MCQs with context
+G-->>N : Structured questions
+N->>S : Insert questions (with chunk_ids)
+N-->>U : QuizSession with questions
 ```
 
 **Diagram sources**
-- [next.config.ts:1-25](file://next.config.ts#L1-L25)
-- [src/middleware.ts:1-41](file://src/middleware.ts#L1-L41)
-- [README.md:23-77](file://README.md#L23-L77)
+- [src/app/api/quiz/generate/route.ts:10-187](file://src/app/api/quiz/generate/route.ts#L10-L187)
+- [supabase/schema.sql:116-150](file://supabase/schema.sql#L116-L150)
 
 **Section sources**
-- [next.config.ts:1-25](file://next.config.ts#L1-L25)
-- [src/middleware.ts:1-41](file://src/middleware.ts#L1-L41)
-- [README.md:23-77](file://README.md#L23-L77)
+- [README.md:84-127](file://README.md#L84-L127)
+- [src/app/api/quiz/generate/route.ts:10-187](file://src/app/api/quiz/generate/route.ts#L10-L187)
 
 ## Detailed Component Analysis
 
-### System Boundaries and Integration Patterns
-- Frontend boundary: Next.js pages and components render UI and manage client state via TanStack Query.
-- Server boundary: Middleware enforces route protection; Next.js headers enforce security policies.
-- Backend boundary: Supabase provides authentication, storage, and relational data; pgvector stores and retrieves textbook chunk embeddings.
-- AI boundary: Google Gemini generates MCQs and explanations, and produces embeddings for indexing.
-
-Integration patterns:
-- Client-to-server calls use typed requests and responses validated by Zod schemas (as documented).
-- Server-to-database uses Drizzle ORM for type-safe queries and migrations.
-- Server-to-AI calls use structured prompts and JSON outputs validated before persisting or returning to clients.
-
-**Section sources**
-- [src/middleware.ts:1-41](file://src/middleware.ts#L1-L41)
-- [next.config.ts:1-25](file://next.config.ts#L1-L25)
-- [README.md:23-77](file://README.md#L23-L77)
-
-### RAG Pipeline: Build-Time Indexing
-Build-time pipeline processes textbook content into indexed vectors for retrieval:
-- Input: Chapter text files under rag/textbooks.
-- Steps: Clean text, chunk by SLO codes/headings, embed via Gemini text-embedding-004, upload vectors to Supabase pgvector table.
+### RAG Question Generation Pipeline
+- Input validation ensures correct request payloads before processing.
+- Context retrieval combines direct textbook file reading with optional pgvector similarity search to enrich prompt context.
+- Gemini generates structured MCQs adhering to a strict schema; fallback to local question sets if AI is unavailable.
+- Session and questions are stored with references to source chunks for traceability.
 
 ```mermaid
 flowchart TD
-Start(["Start Indexing"]) --> Clean["Clean Text<br/>Strip watermarks, OCR artifacts"]
-Clean --> Chunk["Chunk by SLO Codes<br/>~400-600 tokens, 50-token overlap"]
-Chunk --> Embed["Embed with Gemini<br/>text-embedding-004 → 768-dim"]
-Embed --> Upload["Upload to Supabase<br/>pgvector table"]
-Upload --> End(["Index Ready"])
+Start(["POST /api/quiz/generate"]) --> Validate["Validate payload"]
+Validate --> |Invalid| Err400["Return 400"]
+Validate --> |Valid| LoadContext["Load textbook context"]
+LoadContext --> Embed["Generate embedding"]
+Embed --> VectorSearch{"Vector search results?"}
+VectorSearch --> |Yes| MergeCtx["Merge RAG chunks with text"]
+VectorSearch --> |No| UseText["Use text-only context"]
+MergeCtx --> GenAI["Call Gemini for MCQs"]
+UseText --> GenAI
+GenAI --> SaveSession["Create session (if auth)"]
+SaveSession --> SaveQuestions["Insert questions + chunk_ids"]
+SaveQuestions --> Return["Return QuizSession"]
+Err400 --> End(["Exit"])
+Return --> End
 ```
 
 **Diagram sources**
-- [README.md:79-122](file://README.md#L79-L122)
+- [src/app/api/quiz/generate/route.ts:10-187](file://src/app/api/quiz/generate/route.ts#L10-L187)
+- [src/lib/textbook-reader.ts:9-45](file://src/lib/textbook-reader.ts#L9-L45)
+- [supabase/schema.sql:116-150](file://supabase/schema.sql#L116-L150)
 
 **Section sources**
-- [README.md:79-122](file://README.md#L79-L122)
+- [src/app/api/quiz/generate/route.ts:10-187](file://src/app/api/quiz/generate/route.ts#L10-L187)
+- [src/lib/textbook-reader.ts:9-45](file://src/lib/textbook-reader.ts#L9-L45)
 
-### RAG Pipeline: Query-Time Generation
-Query-time flow generates MCQs based on student-selected topics and difficulty:
-- Embed query (topic + difficulty context).
-- Retrieve top relevant chunks via pgvector cosine similarity.
-- Build Gemini prompt with system instruction, retrieved context, and output schema.
-- Generate structured MCQ JSON, validate with Zod, store in DB, serve to student.
+### Dashboard Statistics Aggregation
+- Fetches current user profile and recent completed sessions.
+- Computes weekly question counts, accuracy rates, and identifies weak topics by aggregating responses.
+- Returns structured stats, recent sessions, weak topics, and profile details for the UI.
 
 ```mermaid
 sequenceDiagram
-participant Student as "Student"
-participant UI as "Next.js UI"
-participant API as "API Route (Server)"
-participant DB as "Supabase/pgvector"
-participant AI as "Gemini API"
-Student->>UI : Select topic/difficulty
-UI->>API : Request MCQs
-API->>DB : Embed query + similarity search
-DB-->>API : Top N textbook chunks
-API->>AI : Prompt with context + schema
-AI-->>API : Structured MCQ JSON
-API->>DB : Validate & store results
-API-->>UI : Return MCQs
-UI-->>Student : Display questions + explanations
+participant U as "Client"
+participant API as "/api/dashboard/stats"
+participant DB as "Supabase"
+U->>API : GET
+API->>DB : Get user profile
+API->>DB : Get recent completed sessions
+API->>DB : Get user responses with question metadata
+API-->>U : {stats, recentSessions, weakTopics, profile}
 ```
 
 **Diagram sources**
-- [README.md:104-122](file://README.md#L104-L122)
+- [src/app/api/dashboard/stats/route.ts:6-172](file://src/app/api/dashboard/stats/route.ts#L6-L172)
 
 **Section sources**
-- [README.md:104-122](file://README.md#L104-L122)
+- [src/app/api/dashboard/stats/route.ts:6-172](file://src/app/api/dashboard/stats/route.ts#L6-L172)
 
-### Database Schema and Data Models
-Core entities include users, quiz sessions, questions, user answers, weak topics, textbook chunks, and study plans. Relationships link sessions to questions and answers, and questions to source chunks. Study plans store per-week plans with rationale and insights.
-
-```mermaid
-erDiagram
-USERS {
-uuid id PK
-string email UK
-string full_name
-timestamp created_at
-}
-QUIZ_SESSIONS {
-uuid id PK
-uuid user_id FK
-string topic
-string difficulty
-int num_questions
-int score
-string status
-timestamp created_at
-}
-QUESTIONS {
-uuid id PK
-uuid session_id FK
-string question_text
-string option_a
-string option_b
-string option_c
-string option_d
-string correct_answer
-string explanation_en
-string explanation_ur
-string difficulty
-uuid source_chunk_id FK
-}
-USER_ANSWERS {
-uuid id PK
-uuid user_id FK
-uuid question_id FK
-string selected_answer
-boolean is_correct
-int time_taken_ms
-timestamp created_at
-}
-WEAK_TOPICS {
-uuid id PK
-uuid user_id FK
-string topic
-int error_count
-int attempt_count
-int weakness_score
-timestamp last_updated
-}
-TEXTBOOK_CHUNKS {
-uuid id PK
-int chapter_num
-string slo_code
-string heading
-text chunk_text
-vector embedding
-int token_count
-}
-STUDY_PLANS {
-uuid id PK
-uuid user_id FK
-jsonb plan_data
-int week_number
-timestamp created_at
-}
-USERS ||--o{ QUIZ_SESSIONS : "has many"
-QUIZ_SESSIONS ||--o{ QUESTIONS : "contains"
-USERS ||--o{ USER_ANSWERS : "submits"
-USERS ||--o{ WEAK_TOPICS : "tracks"
-TEXTBOOK_CHUNKS ||--o{ QUESTIONS : "source for"
-USERS ||--o{ STUDY_PLANS : "owns"
-```
-
-**Diagram sources**
-- [README.md:124-161](file://README.md#L124-L161)
-
-**Section sources**
-- [README.md:124-161](file://README.md#L124-L161)
-
-### Type System and Validation
-Centralized TypeScript interfaces define domain models for topics, questions, sessions, answers, weak topics, study plans, dashboard stats, recent sessions, and user profiles. These types ensure consistency between UI, API contracts, and database models.
-
-```mermaid
-classDiagram
-class Topic {
-+string id
-+number chapterNum
-+string name
-+string category
-+number subtopicsCount
-+number accuracy?
-+boolean isWeak?
-}
-class Question {
-+string id
-+string sessionId
-+string questionText
-+string optionA
-+string optionB
-+string optionC
-+string optionD
-+string correctAnswer
-+string explanationEn
-+string explanationUr
-+string difficulty
-+string topic
-}
-class UserAnswer {
-+string questionId
-+string selectedAnswer
-+boolean isCorrect
-+number timeTakenMs
-}
-class QuizSession {
-+string id
-+string topic
-+number chapterNum
-+string difficulty
-+number numQuestions
-+number score?
-+number totalQuestions
-+string status
-+string createdAt
-+number timeTakenMs?
-+Question[] questions
-+UserAnswer[] answers
-}
-class WeakTopic {
-+string topic
-+number chapterNum
-+number weaknessScore
-+number errorCount
-+number attemptCount
-}
-class StudyPlanDay {
-+string day
-+string date
-+string[] topics
-+number estimatedMinutes
-+string status
-+string difficulty
-+number questionCount
-}
-class StudyPlan {
-+string id
-+number weekNumber
-+StudyPlanDay[] days
-+string rationale
-+string[] insights
-}
-class DashboardStats {
-+number totalQuestions
-+number questionsThisWeek
-+number accuracyRate
-+number sessionsCompleted
-+number studyStreak
-}
-class RecentSession {
-+string id
-+string topic
-+number score
-+number totalQuestions
-+string date
-}
-class UserProfile {
-+string id
-+string fullName
-+string email
-+string memberSince
-+number totalQuestions
-+number totalSessions
-+number overallAccuracy
-+string bestTopic
-+string worstTopic
-+number longestStreak
-+ChapterPerformance[] chapterPerformance
-}
-QuizSession --> Question : "contains"
-QuizSession --> UserAnswer : "records"
-StudyPlan --> StudyPlanDay : "comprises"
-```
-
-**Diagram sources**
-- [src/types/quiz.ts:1-107](file://src/types/quiz.ts#L1-L107)
-
-**Section sources**
-- [src/types/quiz.ts:1-107](file://src/types/quiz.ts#L1-L107)
-
-### UI Components and State Management
-- Providers initializes TanStack Query with default cache and retry settings, enabling efficient data fetching and caching across pages.
-- AppLayout composes Navbar and Sidebar for consistent navigation and app shell.
-- Landing page demonstrates feature sections and CTAs using UI primitives.
-- Dashboard aggregates mock stats, weak topics, and recent sessions, linking to practice and results.
-- Practice page supports topic filtering, session configuration, and indicates AI-generated questions via RAG.
+### Authentication Flow (OAuth Callback)
+- Exchanges authorization code for a session using Supabase Auth.
+- Redirects to the intended route after successful exchange, handling environment-specific host resolution.
 
 ```mermaid
 sequenceDiagram
-participant Browser as "Browser"
-participant Layout as "Root Layout"
-participant Providers as "Providers"
-participant Page as "Page Component"
-participant UI as "UI Primitives"
-Browser->>Layout : Load app
-Layout->>Providers : Wrap children
-Providers->>Providers : Init QueryClient
-Providers->>Page : Render page
-Page->>UI : Compose components
-UI-->>Browser : Rendered interface
+participant B as "Browser"
+participant C as "Supabase Auth"
+participant R as "/auth/callback"
+B->>C : Initiate OAuth login
+C-->>B : Redirect with code
+B->>R : GET /auth/callback?code=...
+R->>C : exchangeCodeForSession(code)
+C-->>R : Session established
+R-->>B : Redirect to next page
 ```
 
 **Diagram sources**
-- [src/app/layout.tsx:1-57](file://src/app/layout.tsx#L1-L57)
-- [src/components/Providers.tsx:1-23](file://src/components/Providers.tsx#L1-L23)
-- [src/app/page.tsx:1-418](file://src/app/page.tsx#L1-L418)
-- [src/app/dashboard/page.tsx:1-239](file://src/app/dashboard/page.tsx#L1-L239)
-- [src/app/practice/page.tsx:1-196](file://src/app/practice/page.tsx#L1-L196)
+- [src/app/auth/callback/route.ts:4-31](file://src/app/auth/callback/route.ts#L4-L31)
 
 **Section sources**
-- [src/components/Providers.tsx:1-23](file://src/components/Providers.tsx#L1-L23)
-- [src/components/layout/AppLayout.tsx:1-25](file://src/components/layout/AppLayout.tsx#L1-L25)
-- [src/app/page.tsx:1-418](file://src/app/page.tsx#L1-L418)
-- [src/app/dashboard/page.tsx:1-239](file://src/app/dashboard/page.tsx#L1-L239)
-- [src/app/practice/page.tsx:1-196](file://src/app/practice/page.tsx#L1-L196)
+- [src/app/auth/callback/route.ts:4-31](file://src/app/auth/callback/route.ts#L4-L31)
+
+### Textbook Ingestion (Build-Time Indexing)
+- Reads raw textbook files, cleans text, splits into overlapping chunks, generates embeddings, and upserts records into pgvector.
+- Includes rate-limit handling and per-chapter logging.
+
+```mermaid
+flowchart TD
+IStart(["Run ingest script"]) --> ReadFiles["Read rag/textbooks/*.txt"]
+ReadFiles --> Clean["Clean text"]
+Clean --> Chunk["Chunk with overlap"]
+Chunk --> Embed["Generate embeddings"]
+Embed --> Upsert["Upsert to textbook_chunks"]
+Upsert --> Done(["Index ready"])
+```
+
+**Diagram sources**
+- [scripts/ingest-textbooks.ts:97-183](file://scripts/ingest-textbooks.ts#L97-L183)
+
+**Section sources**
+- [scripts/ingest-textbooks.ts:97-183](file://scripts/ingest-textbooks.ts#L97-L183)
+
+### Progress Tracking and Study Plan Generation
+- Local history storage and computation of weekly activity, streaks, and weak topics.
+- Generates a week-long study plan prioritizing weak areas and balancing core chapters.
+
+```mermaid
+flowchart TD
+PStart(["Compute progress"]) --> LoadHistory["Load local sessions"]
+LoadHistory --> Aggregate["Aggregate totals, weekly, streaks"]
+Aggregate --> WeakTopics["Identify weak topics"]
+WeakTopics --> PlanGen["Generate weekly plan"]
+PlanGen --> PEnd(["Return stats + plan"])
+```
+
+**Diagram sources**
+- [src/lib/progress-tracker.ts:37-191](file://src/lib/progress-tracker.ts#L37-L191)
+- [src/lib/study-plan-generator.ts:26-100](file://src/lib/study-plan-generator.ts#L26-L100)
+
+**Section sources**
+- [src/lib/progress-tracker.ts:37-191](file://src/lib/progress-tracker.ts#L37-L191)
+- [src/lib/study-plan-generator.ts:26-100](file://src/lib/study-plan-generator.ts#L26-L100)
 
 ## Dependency Analysis
-Technology stack includes Next.js 15, React 19, Supabase SDKs, Drizzle ORM, Postgres driver, TanStack Query, Google Generative AI, Zod, React Hook Form, Lucide icons, clsx, and Tailwind CSS v4 tooling. Dev dependencies cover TypeScript, Drizzle Kit, Tailwind PostCSS plugin, ESLint, and TSX runtime.
+Key runtime dependencies and their roles:
+- Next.js App Router for routing and server functions.
+- Supabase JS SDK for auth and database operations.
+- Drizzle ORM for type-safe queries and migrations.
+- Google Generative AI SDK for embeddings and model calls.
+- Zod for input/output validation.
+- TanStack Query for client-side data fetching and caching.
 
 ```mermaid
 graph LR
-Next["Next.js 15"] --> React["React 19"]
-Next --> TanStack["@tanstack/react-query"]
-Next --> Tailwind["Tailwind CSS v4"]
-Next --> Supabase["@supabase/supabase-js"]
-Next --> Drizzle["drizzle-orm"]
+Next["Next.js"] --> Supa["Supabase JS"]
 Next --> Gemini["@google/generative-ai"]
-Next --> Zod["zod"]
-Next --> RHF["react-hook-form"]
-Next --> Lucide["lucide-react"]
-Next --> Clsx["clsx"]
+Next --> Drizzle["Drizzle ORM"]
+Next --> Zod["Zod"]
+Next --> TQ["TanStack Query"]
 ```
 
 **Diagram sources**
-- [package.json:11-39](file://package.json#L11-L39)
+- [package.json:11-28](file://package.json#L11-L28)
 
 **Section sources**
-- [package.json:11-39](file://package.json#L11-L39)
+- [package.json:11-28](file://package.json#L11-L28)
 
 ## Performance Considerations
-- Caching: TanStack Query configured with staleTime and retry to reduce redundant network calls and improve perceived performance.
-- Vector retrieval: pgvector cosine similarity efficiently returns top relevant chunks, minimizing LLM context size and cost.
-- Cold starts: Drizzle ORM chosen for lighter footprint and faster cold starts on Vercel compared to heavier ORMs.
-- UI rendering: Server components and static assets minimize client bundle; Tailwind v4 optimizes styles.
-- Network boundaries: Security headers mitigate common web vulnerabilities without impacting performance.
+- Vector search uses an HNSW index on embeddings for fast cosine similarity queries.
+- Chunk size and overlap balance context richness with token limits and retrieval precision.
+- Rate limiting and retries are implemented in ingestion to respect provider quotas.
+- API routes return minimal payloads and leverage server-side aggregation to reduce client load.
+- Security headers mitigate common web vulnerabilities at the edge.
 
 [No sources needed since this section provides general guidance]
 
 ## Troubleshooting Guide
-- Authentication gating: Middleware currently allows all routes in development; enable Supabase session checks in production to protect routes.
-- Security headers: Ensure Next.js headers are applied globally to prevent clickjacking, MIME sniffing, and restrict permissions.
-- Environment variables: Verify Supabase URL, keys, service role key, DATABASE_URL, and GEMINI_API_KEY are set correctly in deployment settings.
-- Data validation: Use Zod to validate API inputs/outputs and Drizzle types to catch mismatches early.
+Common issues and mitigations:
+- Missing or invalid environment variables can cause Supabase or Gemini failures; ensure all required keys are set.
+- If vector search fails or returns no results, the pipeline falls back to text-only context and local question sets.
+- Authentication callback errors should be checked in logs; verify redirect URLs and OAuth configuration.
+- Middleware currently allows all routes in development; enable session checks when integrating Supabase Auth fully.
 
 **Section sources**
-- [src/middleware.ts:1-41](file://src/middleware.ts#L1-L41)
-- [next.config.ts:1-25](file://next.config.ts#L1-L25)
-- [README.md:228-244](file://README.md#L228-L244)
+- [src/app/api/quiz/generate/route.ts:125-135](file://src/app/api/quiz/generate/route.ts#L125-L135)
+- [src/app/auth/callback/route.ts:24-31](file://src/app/auth/callback/route.ts#L24-L31)
+- [src/middleware.ts:22-35](file://src/middleware.ts#L22-L35)
 
 ## Conclusion
-MedAce AI’s architecture integrates a modern Next.js frontend with Supabase services and Google Gemini AI to deliver adaptive, textbook-grounded MDCAT preparation. The RAG pipeline ensures high-quality, syllabus-aligned MCQs, while strong typing, robust state management, and secure defaults support scalability and reliability. Deployment on Vercel simplifies delivery, and the modular component structure enables maintainable growth.
+MedAce AI’s architecture cleanly separates concerns across frontend, server routes, data persistence, and AI services. The RAG pipeline grounds question generation in verified textbook content, while Supabase provides robust authentication, relational storage, and vector search. The design supports scalability through efficient indexing, server-side aggregation, and modular API routes, enabling concurrent user sessions and iterative improvements to the learning experience.
 
 [No sources needed since this section summarizes without analyzing specific files]
+
+## Appendices
+
+### Technology Stack Decisions and Rationale
+- Gemini 2.0 Flash selected for speed, cost efficiency, multilingual output quality, and large context window.
+- text-embedding-004 chosen for multilingual support, compact vectors, and generous free tier.
+- pgvector integrated within Supabase to avoid extra services and leverage SQL-native queries.
+- Drizzle ORM preferred for lighter footprint and better cold starts on serverless platforms.
+- Zod centralizes validation and types, ensuring consistency between API contracts and runtime checks.
+- TanStack Query offers superior developer experience for caching, pagination, and optimistic updates in Next.js.
+- Framer Motion enables high-quality animations and transitions that enhance UX without sacrificing performance.
+
+**Section sources**
+- [README.md:311-323](file://README.md#L311-L323)
+
+### Infrastructure and Deployment
+- Deploy on Vercel with zero-config Next.js deployment.
+- Set environment variables for Supabase, database, and Gemini before deploying.
+- Security headers are applied globally via Next.js configuration.
+
+**Section sources**
+- [README.md:448-453](file://README.md#L448-L453)
+- [next.config.ts:3-21](file://next.config.ts#L3-L21)
+
+### System Boundaries and Security
+- Authentication boundary: Supabase OAuth handles identity and session lifecycle.
+- Database boundary: Row Level Security policies enforce per-user access across tables.
+- AI boundary: Gemini calls are isolated in server routes with validated prompts and structured outputs.
+- Middleware boundary: Protects routes and can enforce session checks when fully integrated.
+
+**Section sources**
+- [supabase/schema.sql:155-229](file://supabase/schema.sql#L155-L229)
+- [src/middleware.ts:4-35](file://src/middleware.ts#L4-L35)
+
+### Data Models Overview
+Core entities include profiles, textbook chunks, quiz sessions, quiz questions, user responses, and study plans. Relationships link sessions to questions and responses, and questions reference source chunks.
+
+```mermaid
+erDiagram
+PROFILES {
+uuid id PK
+text full_name
+text email
+int current_streak
+int longest_streak
+date last_active_date
+date target_exam_date
+int total_questions
+int total_sessions
+float overall_accuracy
+timestamptz created_at
+timestamptz updated_at
+}
+TEXTBOOK_CHUNKS {
+uuid id PK
+text chapter
+int chapter_num
+int chunk_index
+text content
+int token_count
+vector embedding
+timestamptz created_at
+}
+QUIZ_SESSIONS {
+uuid id PK
+uuid user_id FK
+text topic
+int chapter_num
+text difficulty
+int num_questions
+int score
+int total_questions
+text status
+int time_taken_ms
+timestamptz created_at
+timestamptz updated_at
+}
+QUIZ_QUESTIONS {
+uuid id PK
+uuid session_id FK
+text question_text
+text option_a
+text option_b
+text option_c
+text option_d
+text correct_answer
+text explanation_en
+text explanation_ur
+text difficulty
+text topic
+int chapter_num
+uuid[] chunk_ids
+timestamptz created_at
+}
+USER_RESPONSES {
+uuid id PK
+uuid session_id FK
+uuid question_id FK
+uuid user_id FK
+text selected_answer
+boolean is_correct
+int time_taken_ms
+timestamptz created_at
+}
+STUDY_PLANS {
+uuid id PK
+uuid user_id FK
+date target_exam_date
+int week_number
+jsonb plan_data
+timestamptz created_at
+timestamptz updated_at
+}
+PROFILES ||--o{ QUIZ_SESSIONS : "has many"
+QUIZ_SESSIONS ||--o{ QUIZ_QUESTIONS : "contains"
+QUIZ_SESSIONS ||--o{ USER_RESPONSES : "records"
+PROFILES ||--o{ STUDY_PLANS : "owns"
+```
+
+**Diagram sources**
+- [supabase/schema.sql:11-109](file://supabase/schema.sql#L11-L109)

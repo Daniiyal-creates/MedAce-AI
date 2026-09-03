@@ -1,0 +1,1 @@
+Next.js App Router with TypeScript, Tailwind CSS v4 `@theme inline` design tokens, Framer Motion for scroll-triggered animations, Lucide React icons, and Google Fonts (Inter + Noto Nastaliq Urdu).

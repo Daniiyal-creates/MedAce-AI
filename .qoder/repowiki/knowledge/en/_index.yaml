@@ -1,23 +1,47 @@
 # 知识卡导出索引文件
 schema_version: 1
 locale: en-US
-branch: daniyal-v1
+branch: main
 nodes_managed: true
-exported_at: "2026-08-30T10:03:15Z"
+exported_at: "2026-09-03T21:21:46Z"
 modules:
     "":
-        dir_name: MedAce AI Next.js Application Root
-        title: MedAce AI Next.js Application Root
+        dir_name: MedAce AI — Next.js Adaptive MDCAT Prep Platform
+        title: MedAce AI — Next.js Adaptive MDCAT Prep Platform
         scope:
             - README.md
             - .gitignore
             - package.json
             - package-lock.json
-            - next.config.ts
             - tsconfig.json
+            - next.config.ts
             - eslint.config.mjs
             - postcss.config.mjs
+            - requirements.txt
             - .env.example
+        source_files: []
+        children:
+            - frontend_app
+        depends_on: []
+        related_to: []
+    frontend_app:
+        dir_name: MedAce AI Frontend Application
+        title: MedAce AI Frontend Application
+        scope:
+            - src/
+        source_files: []
+        children:
+            - frontend_app/app_shell
+        depends_on: []
+        related_to: []
+    frontend_app/app_shell:
+        dir_name: Next.js App Shell & Landing Page
+        title: Next.js App Shell & Landing Page
+        scope:
+            - src/app/layout.tsx
+            - src/app/page.tsx
+            - src/app/globals.css
+            - src/middleware.ts
         source_files: []
         children: []
         depends_on: []
