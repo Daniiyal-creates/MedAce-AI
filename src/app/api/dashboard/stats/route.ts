@@ -48,23 +48,29 @@ export async function GET() {
       meta.fullName ||
       (user.email ? user.email.split("@")[0] : "Medical Student");
 
-    // 1. Fetch User Profile from DB table if exists
-    const { data: profileData } = await supabaseAdmin
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
+    // Run the three independent queries in parallel instead of sequentially —
+    // total latency becomes the slowest query rather than their sum.
+    const [profileRes, sessionsRes, responsesRes] = await Promise.all([
+      supabaseAdmin
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single(),
+      supabaseAdmin
+        .from("quiz_sessions")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("status", "completed")
+        .order("created_at", { ascending: false })
+        .limit(20),
+      supabaseAdmin
+        .from("user_responses")
+        .select("is_correct, quiz_questions(topic, chapter_num)")
+        .eq("user_id", user.id),
+    ]);
 
-    // 2. Fetch Recent Quiz Sessions
-    const { data: rawSessions } = await supabaseAdmin
-      .from("quiz_sessions")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("status", "completed")
-      .order("created_at", { ascending: false })
-      .limit(20);
-
-    const sessions = rawSessions || [];
+    const profileData = profileRes.data;
+    const sessions = sessionsRes.data || [];
 
     // Calculate questions completed this week
     const oneWeekAgo = new Date();
@@ -79,14 +85,14 @@ export async function GET() {
       topic: s.topic,
       score: s.score || 0,
       totalQuestions: s.total_questions || 10,
-      date: new Date(s.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      // Raw ISO date — formatted once at display time. Pre-formatting here
+      // ("Sep 4", no year) made the client's new Date() parse fall back to
+      // V8's default year 2001, rendering "Sep 4, 2001".
+      date: new Date(s.created_at).toISOString(),
     }));
 
     // 3. Aggregate User Responses to compute Weak Topics
-    const { data: responses } = await supabaseAdmin
-      .from("user_responses")
-      .select("is_correct, quiz_questions(topic, chapter_num)")
-      .eq("user_id", user.id);
+    const responses = responsesRes.data;
 
     const topicStatsMap: Record<string, { topic: string; chapterNum: number; total: number; errors: number }> = {};
 

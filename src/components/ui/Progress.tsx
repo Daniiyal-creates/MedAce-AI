@@ -1,7 +1,6 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
 
 type ProgressVariant = "primary" | "success" | "error" | "warning";
 
@@ -52,12 +51,10 @@ function Progress({
           sizeClasses[size]
         )}
       >
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${clamped}%` }}
-          transition={{ type: "spring", damping: 30, stiffness: 100, delay: 0.1 }}
+        <div
+          style={{ width: `${clamped}%` }}
           className={cn(
-            "h-full rounded-full",
+            "h-full rounded-full transition-[width] duration-500 ease-out",
             variantClasses[variant],
             glow && glowClasses[variant]
           )}

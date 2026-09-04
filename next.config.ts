@@ -11,6 +11,14 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  reactStrictMode: true,
+  poweredByHeader: false,
+  compress: true,
+  experimental: {
+    // Transforms barrel-file icon imports into direct module imports so only
+    // the used icons ship to the browser.
+    optimizePackageImports: ["lucide-react"],
+  },
   async headers() {
     return [
       {

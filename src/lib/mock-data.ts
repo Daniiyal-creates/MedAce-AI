@@ -6,29 +6,14 @@ import type {
   StudyPlan,
   DashboardStats,
   RecentSession,
-  UserProfile,
 } from "@/types/quiz";
+import { mdcTopics } from "@/lib/topics";
 
 /* ===========================
    TOPICS — 15 MDCAT Biology Chapters
+   (catalog lives in @/lib/topics — re-exported for convenience)
    =========================== */
-export const mockTopics: Topic[] = [
-  { id: "ch1", chapterNum: 1, name: "Digestive System of Man", category: "Human Physiology", subtopicsCount: 12 },
-  { id: "ch2", chapterNum: 2, name: "Blood Circulatory System of Man", category: "Human Physiology", subtopicsCount: 14 },
-  { id: "ch3", chapterNum: 3, name: "Respiratory System of Man", category: "Human Physiology", subtopicsCount: 10 },
-  { id: "ch4", chapterNum: 4, name: "Urinary System of Man", category: "Human Physiology", subtopicsCount: 9 },
-  { id: "ch5", chapterNum: 5, name: "Nervous System of Man", category: "Human Physiology", subtopicsCount: 18 },
-  { id: "ch6", chapterNum: 6, name: "Endocrine System of Man", category: "Human Physiology", subtopicsCount: 11 },
-  { id: "ch7", chapterNum: 7, name: "Skeletal System of Man", category: "Human Physiology", subtopicsCount: 10 },
-  { id: "ch8", chapterNum: 8, name: "Thermoregulation & Homeostasis", category: "Human Physiology", subtopicsCount: 7 },
-  { id: "ch9", chapterNum: 9, name: "Immunity", category: "Modern Topics", subtopicsCount: 12 },
-  { id: "ch10", chapterNum: 10, name: "Biotechnology", category: "Modern Topics", subtopicsCount: 13 },
-  { id: "ch11", chapterNum: 11, name: "Biostatistics & Data Handling", category: "Modern Topics", subtopicsCount: 8 },
-  { id: "ch12", chapterNum: 12, name: "Structural & Computational Biology", category: "Modern Topics", subtopicsCount: 6 },
-  { id: "ch13", chapterNum: 13, name: "Climate Change", category: "Modern Topics", subtopicsCount: 7 },
-  { id: "ch14", chapterNum: 14, name: "Selected Topics", category: "Modern Topics", subtopicsCount: 9 },
-  { id: "ch15", chapterNum: 15, name: "Pharmacological Drugs", category: "Pharmacology", subtopicsCount: 10 },
-];
+export const mockTopics: Topic[] = mdcTopics;
 
 /* ===========================
    WEAK TOPICS
@@ -280,33 +265,3 @@ export const mockStudyPlan: StudyPlan = {
   ],
 };
 
-/* ===========================
-   USER PROFILE
-   =========================== */
-export const mockUserProfile: UserProfile = {
-  id: "user-1",
-  fullName: "Ahmed Khan",
-  email: "ahmed.khan@example.com",
-  memberSince: "2026-07-15",
-  totalQuestions: 342,
-  totalSessions: 28,
-  overallAccuracy: 64,
-  bestTopic: "Climate Change",
-  worstTopic: "Nervous System of Man",
-  longestStreak: 12,
-  chapterPerformance: [
-    { chapter: "Nervous System of Man", accuracy: 38 },
-    { chapter: "Pharmacological Drugs", accuracy: 42 },
-    { chapter: "Urinary System of Man", accuracy: 45 },
-    { chapter: "Immunity", accuracy: 52 },
-    { chapter: "Blood Circulatory System", accuracy: 58 },
-    { chapter: "Biotechnology", accuracy: 63 },
-    { chapter: "Endocrine System", accuracy: 67 },
-    { chapter: "Selected Topics", accuracy: 70 },
-    { chapter: "Digestive System", accuracy: 72 },
-    { chapter: "Skeletal System", accuracy: 75 },
-    { chapter: "Respiratory System", accuracy: 81 },
-    { chapter: "Thermoregulation", accuracy: 85 },
-    { chapter: "Climate Change", accuracy: 90 },
-  ],
-};

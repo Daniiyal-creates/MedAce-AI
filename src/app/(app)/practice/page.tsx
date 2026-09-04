@@ -1,15 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import AppLayout from "@/components/layout/AppLayout";
 import { Card, Badge, Button, Progress, Input, Modal, Select, Tabs } from "@/components/ui";
 import { Search, AlertTriangle, Sparkles, Loader2 } from "lucide-react";
-import { motion } from "framer-motion";
-import { mockTopics } from "@/lib/mock-data";
-import { generateQuiz, getDashboardStats } from "@/lib/api-client";
-import { calculateProgressStats } from "@/lib/progress-tracker";
-import { useAuth } from "@/components/auth/AuthProvider";
+import { mdcTopics } from "@/lib/topics";
+import { generateQuiz } from "@/lib/api-client";
+import { useDashboardStats } from "@/lib/use-dashboard-stats";
 import type { Topic } from "@/types/quiz";
 
 const categoryTabs = [
@@ -21,7 +18,8 @@ const categoryTabs = [
 
 export default function PracticePage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { data } = useDashboardStats();
+
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
@@ -29,48 +27,35 @@ export default function PracticePage() {
   const [numQuestions, setNumQuestions] = useState("20");
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const [topicsWithStats, setTopicsWithStats] = useState<Topic[]>(mockTopics);
+  // Merge real performance onto the static catalog — memoized so it only
+  // recomputes when the shared dashboard cache entry changes.
+  const topicsWithStats = useMemo(() => {
+    if (!data) return mdcTopics;
 
-  useEffect(() => {
-    async function loadTopicStats() {
-      let statsResult = calculateProgressStats();
+    return mdcTopics.map((topic) => {
+      const perf = data.chapterPerformance.find(
+        (cp) => cp.chapter.toLowerCase() === topic.name.toLowerCase()
+      );
+      const weak = data.weakTopics.find(
+        (wt) => wt.topic.toLowerCase() === topic.name.toLowerCase()
+      );
 
-      try {
-        const apiData = await getDashboardStats();
-        if (apiData?.weakTopics || apiData?.profile?.chapterPerformance) {
-          // Merge API stats if present
-        }
-      } catch {
-        // Fallback to local
-      }
+      return {
+        ...topic,
+        accuracy: perf ? perf.accuracy : undefined,
+        isWeak: !!weak,
+      };
+    });
+  }, [data]);
 
-      // Map real performance onto catalog topics
-      const updated = mockTopics.map((topic) => {
-        const perf = statsResult.chapterPerformance.find(
-          (cp) => cp.chapter.toLowerCase() === topic.name.toLowerCase()
-        );
-        const weak = statsResult.weakTopics.find(
-          (wt) => wt.topic.toLowerCase() === topic.name.toLowerCase()
-        );
-
-        return {
-          ...topic,
-          accuracy: perf ? perf.accuracy : undefined,
-          isWeak: !!weak,
-        };
-      });
-
-      setTopicsWithStats(updated);
-    }
-
-    loadTopicStats();
-  }, []);
-
-  const filtered = topicsWithStats.filter((t) => {
-    const matchesCategory = activeTab === "all" || t.category === activeTab;
-    const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return topicsWithStats.filter((t) => {
+      const matchesCategory = activeTab === "all" || t.category === activeTab;
+      const matchesSearch = t.name.toLowerCase().includes(q);
+      return matchesCategory && matchesSearch;
+    });
+  }, [topicsWithStats, activeTab, search]);
 
   const handleStartPractice = async () => {
     if (!selectedTopic) return;
@@ -88,19 +73,17 @@ export default function PracticePage() {
         sessionStorage.setItem(`session_${session.id}`, JSON.stringify(session));
       }
 
-      router.push(`/practice/${session.id}`);
+      router.push(`/quiz/${session.id}`);
     } catch (err) {
       console.warn("Using fallback demo session navigation:", err);
-      router.push(`/practice/${selectedTopic.id}`);
+      router.push(`/quiz/${selectedTopic.id}`);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const userName = user?.fullName || "Medical Student";
-
   return (
-    <AppLayout userName={userName}>
+    <div className="animate-fade-in">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold">Choose a Topic</h1>
@@ -131,19 +114,14 @@ export default function PracticePage() {
 
       {/* Topic Grid */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((topic, i) => (
-          <motion.div
+        {filtered.map((topic) => (
+          <Card
             key={topic.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.04, type: "spring", damping: 20, stiffness: 200 }}
+            hoverable
+            padding="md"
+            className="cursor-pointer group transition-all h-full"
+            onClick={() => setSelectedTopic(topic)}
           >
-            <Card
-              hoverable
-              padding="md"
-              className="cursor-pointer group transition-all h-full"
-              onClick={() => setSelectedTopic(topic)}
-            >
             <div className="flex items-center gap-2 mb-3">
               <Badge variant="default">Ch {topic.chapterNum}</Badge>
               {topic.isWeak && (
@@ -187,7 +165,6 @@ export default function PracticePage() {
               <p className="text-xs text-muted italic">Not yet attempted</p>
             )}
           </Card>
-          </motion.div>
         ))}
       </div>
 
@@ -271,6 +248,6 @@ export default function PracticePage() {
           </div>
         )}
       </Modal>
-    </AppLayout>
+    </div>
   );
 }

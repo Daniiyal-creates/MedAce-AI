@@ -96,19 +96,20 @@ Return JSON in this EXACT schema format:
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
-      await supabaseAdmin.from("study_plans").insert({
-        id: planId,
-        user_id: user.id,
-        target_exam_date: targetExamDate,
-        week_number: studyPlan.weekNumber,
-        plan_data: studyPlan,
-      });
-
-      // Update target exam date on profile
-      await supabaseAdmin
-        .from("profiles")
-        .update({ target_exam_date: targetExamDate })
-        .eq("id", user.id);
+      // Both writes are independent — run them in parallel.
+      await Promise.all([
+        supabaseAdmin.from("study_plans").insert({
+          id: planId,
+          user_id: user.id,
+          target_exam_date: targetExamDate,
+          week_number: studyPlan.weekNumber,
+          plan_data: studyPlan,
+        }),
+        supabaseAdmin
+          .from("profiles")
+          .update({ target_exam_date: targetExamDate })
+          .eq("id", user.id),
+      ]);
     }
 
     return NextResponse.json(studyPlan);

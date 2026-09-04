@@ -5,7 +5,7 @@ import type {
   UserProfile,
   QuizSession,
 } from "@/types/quiz";
-import { mockTopics } from "@/lib/mock-data";
+import { mdcTopics } from "@/lib/topics";
 
 const HISTORY_KEY = "medace_quiz_history";
 
@@ -50,7 +50,7 @@ export function calculateProgressStats(userSessions?: QuizSession[]) {
       stats: initialStats,
       recentSessions: [],
       weakTopics: [],
-      chapterPerformance: mockTopics.map((t) => ({ chapter: t.name, accuracy: 0 })),
+      chapterPerformance: mdcTopics.map((t) => ({ chapter: t.name, accuracy: 0 })),
       bestTopic: "None yet",
       worstTopic: "None yet",
     };
@@ -175,9 +175,8 @@ export function calculateProgressStats(userSessions?: QuizSession[]) {
     topic: s.topic,
     score: s.score || 0,
     totalQuestions: s.totalQuestions || 10,
-    date: s.createdAt
-      ? new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-      : "Recent",
+    // Raw ISO date — the dashboard formats it once at display time.
+    date: s.createdAt ? new Date(s.createdAt).toISOString() : new Date().toISOString(),
   }));
 
   return {

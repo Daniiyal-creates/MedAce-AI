@@ -142,7 +142,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
 
-          // Listen to auth state changes (e.g. Google OAuth login redirect)
+          // Listen to auth state changes (e.g. session renewal)
           const { data: { subscription } } = supabase.auth.onAuthStateChange(
             (_event, session) => {
               if (session?.user && mounted) {

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import AppLayout from "@/components/layout/AppLayout";
 import { Card, Badge, Button, Tabs } from "@/components/ui";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -28,13 +27,9 @@ const reviewTabs = [
   { id: "skipped", label: "Skipped" },
 ];
 
-import { useAuth } from "@/components/auth/AuthProvider";
-
 export default function ResultsPage() {
   const params = useParams();
-  const { user } = useAuth();
   const sessionId = (params?.session as string) || "session-done";
-  const userName = user?.fullName || "Medical Student";
 
   const [session, setSession] = useState<QuizSession>(mockCompletedSession);
   const [activeTab, setActiveTab] = useState("all");
@@ -106,9 +101,9 @@ export default function ResultsPage() {
   });
 
   return (
-    <AppLayout userName={userName}>
+    <div className="animate-fade-in">
       {/* Score Header */}
-      <div className="text-center mb-8 animate-fade-in">
+      <div className="text-center mb-8">
         <Badge variant={pct >= 70 ? "success" : pct >= 40 ? "warning" : "error"} className="mb-3 px-3 py-1">
           {gradeLabel}
         </Badge>
@@ -137,7 +132,7 @@ export default function ResultsPage() {
               className={pct >= 70 ? "text-success" : pct >= 40 ? "text-warning" : "text-error"}
               initial={{ strokeDashoffset: 327 }}
               animate={{ strokeDashoffset: 0 }}
-              transition={{ duration: 1.5, ease: "easeOut", delay: 0.3 }}
+              transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
             />
           </svg>
           <div className="absolute text-center">
@@ -145,7 +140,7 @@ export default function ResultsPage() {
               className={cn("text-3xl font-bold", getScoreColor(pct))}
               initial={{ opacity: 0, scale: 0.5 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.8, type: "spring", damping: 15 }}
+              transition={{ delay: 0.5, type: "spring", damping: 15 }}
             >
               {score}/{totalQuestions}
             </motion.p>
@@ -172,19 +167,12 @@ export default function ResultsPage() {
           { icon: CheckCircle, value: correctCount, label: "Correct", color: "text-success" },
           { icon: XCircle, value: wrongCount, label: "Wrong", color: "text-error" },
           { icon: Clock, value: `${avgTime}s`, label: "Avg. Time", color: "text-muted" },
-        ].map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 + i * 0.1, type: "spring", damping: 20 }}
-          >
-            <Card padding="md" className="text-center">
-              <stat.icon className={`h-5 w-5 ${stat.color} mx-auto mb-1`} />
-              <p className={`text-xl font-bold ${stat.color}`}>{stat.value}</p>
-              <p className="text-xs text-muted">{stat.label}</p>
-            </Card>
-          </motion.div>
+        ].map((stat) => (
+          <Card key={stat.label} padding="md" className="text-center">
+            <stat.icon className={`h-5 w-5 ${stat.color} mx-auto mb-1`} />
+            <p className={`text-xl font-bold ${stat.color}`}>{stat.value}</p>
+            <p className="text-xs text-muted">{stat.label}</p>
+          </Card>
         ))}
       </div>
 
@@ -369,6 +357,6 @@ export default function ResultsPage() {
           </Button>
         </Link>
       </div>
-    </AppLayout>
+    </div>
   );
 }

@@ -251,7 +251,7 @@ export default function QuizPlayerPage() {
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -30 }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
             className="mb-8"
           >
           <div className="flex items-center gap-2 mb-4">
@@ -307,19 +307,15 @@ export default function QuizPlayerPage() {
         {/* Options */}
         <div className="space-y-3 mb-8">
           {optionLetters.map((letter, i) => (
-            <motion.button
+            <button
               key={letter}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.05 }}
-              whileHover={!isAnswered ? { scale: 1.02 } : undefined}
-              whileTap={!isAnswered ? { scale: 0.98 } : undefined}
               onClick={() => handleSelect(letter)}
               disabled={isAnswered}
               className={cn(
-                "w-full flex items-center gap-4 rounded-xl border px-5 py-4 text-left transition-all duration-200 cursor-pointer",
-                getOptionClasses(letter),
-                isAnswered && "cursor-default"
+                "w-full flex items-center gap-4 rounded-xl border px-5 py-4 text-left transition-all duration-200",
+                !isAnswered && "cursor-pointer hover:scale-[1.01] active:scale-[0.99]",
+                isAnswered && "cursor-default",
+                getOptionClasses(letter)
               )}
             >
               {/* Letter badge */}
@@ -345,7 +341,7 @@ export default function QuizPlayerPage() {
               </span>
 
               <span className="text-sm">{optionTexts[i]}</span>
-            </motion.button>
+            </button>
           ))}
         </div>
 
@@ -377,23 +373,21 @@ export default function QuizPlayerPage() {
             {questions.map((q, i) => {
               const a = answers[q.id];
               return (
-                <motion.button
+                <button
                   key={q.id}
                   onClick={() => setCurrentIdx(i)}
-                  animate={{
-                    scale: i === currentIdx ? 1.4 : 1,
-                    backgroundColor: i === currentIdx
-                      ? "var(--color-primary)"
+                  className={cn(
+                    "h-2.5 w-2.5 shrink-0 rounded-full cursor-pointer transition-all duration-200",
+                    i === currentIdx
+                      ? "scale-150 bg-primary"
                       : a?.submitted
                       ? a.selected === q.correctAnswer
-                        ? "var(--color-success)"
-                        : "var(--color-error)"
+                        ? "bg-success"
+                        : "bg-error"
                       : a?.selected
-                      ? "rgba(20, 184, 166, 0.5)"
-                      : "var(--color-border)",
-                  }}
-                  className="h-2.5 w-2.5 shrink-0 rounded-full cursor-pointer"
-                  transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                      ? "bg-primary/50"
+                      : "bg-border"
+                  )}
                   aria-label={`Question ${i + 1}`}
                 />
               );

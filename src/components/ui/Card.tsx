@@ -2,7 +2,6 @@
 
 import { HTMLAttributes, forwardRef } from "react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
 
 type CardVariant = "default" | "elevated" | "bordered" | "glass";
 type CardPadding = "none" | "sm" | "md" | "lg";
@@ -29,32 +28,15 @@ const paddingClasses: Record<CardPadding, string> = {
 
 const Card = forwardRef<HTMLDivElement, CardProps>(
   ({ className, variant = "default", padding = "md", hoverable = false, children, ...props }, ref) => {
-    if (hoverable) {
-      return (
-        <motion.div
-          ref={ref}
-          whileHover={{ y: -4, transition: { duration: 0.2 } }}
-          className={cn(
-            "rounded-xl transition-colors duration-200",
-            variantClasses[variant],
-            paddingClasses[padding],
-            hoverable && "hover:shadow-lg hover:shadow-black/20 hover:border-primary/20",
-            className
-          )}
-          {...props}
-        >
-          {children}
-        </motion.div>
-      );
-    }
-
     return (
       <div
         ref={ref}
         className={cn(
-          "rounded-xl transition-colors duration-200",
+          "rounded-xl transition-[transform,box-shadow,border-color] duration-200",
           variantClasses[variant],
           paddingClasses[padding],
+          hoverable &&
+            "cursor-default hover:-translate-y-1 hover:shadow-lg hover:shadow-black/20 hover:border-primary/20",
           className
         )}
         {...props}

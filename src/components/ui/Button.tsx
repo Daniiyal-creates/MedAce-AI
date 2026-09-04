@@ -2,7 +2,6 @@
 
 import { ButtonHTMLAttributes, forwardRef } from "react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
@@ -38,27 +37,21 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     return (
-      <motion.div
-        whileHover={!disabled && !loading ? { scale: 1.03 } : undefined}
-        whileTap={!disabled && !loading ? { scale: 0.97 } : undefined}
-        className="inline-flex"
+      <button
+        ref={ref}
+        className={cn(
+          "inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg focus:ring-primary/30 disabled:opacity-50 disabled:pointer-events-none cursor-pointer hover:scale-[1.02] active:scale-[0.98]",
+          variantClasses[variant],
+          sizeClasses[size],
+          glow && "animate-pulse-glow",
+          className
+        )}
+        disabled={disabled || loading}
+        {...props}
       >
-        <button
-          ref={ref}
-          className={cn(
-            "inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg focus:ring-primary/30 disabled:opacity-50 disabled:pointer-events-none cursor-pointer",
-            variantClasses[variant],
-            sizeClasses[size],
-            glow && "animate-pulse-glow",
-            className
-          )}
-          disabled={disabled || loading}
-          {...props}
-        >
-          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-          {children}
-        </button>
-      </motion.div>
+        {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+        {children}
+      </button>
     );
   }
 );

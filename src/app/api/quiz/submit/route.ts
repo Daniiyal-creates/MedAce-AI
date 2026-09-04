@@ -50,35 +50,36 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
-      // Record responses in DB
-      const responseRows = processedAnswers.map((a) => ({
-        session_id: sessionId,
-        question_id: a.questionId,
-        user_id: user.id,
-        selected_answer: a.selectedAnswer,
-        is_correct: a.isCorrect,
-        time_taken_ms: a.timeTakenMs,
-      }));
+      // These three operations are independent — run them in parallel so the
+      // response doesn't wait for each round-trip in sequence.
+      const [, , profileRes] = await Promise.all([
+        supabaseAdmin.from("user_responses").insert(
+          processedAnswers.map((a) => ({
+            session_id: sessionId,
+            question_id: a.questionId,
+            user_id: user.id,
+            selected_answer: a.selectedAnswer,
+            is_correct: a.isCorrect,
+            time_taken_ms: a.timeTakenMs,
+          }))
+        ),
+        supabaseAdmin
+          .from("quiz_sessions")
+          .update({
+            status: "completed",
+            score: correctCount,
+            time_taken_ms: timeTakenMs || 0,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", sessionId),
+        supabaseAdmin
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single(),
+      ]);
 
-      await supabaseAdmin.from("user_responses").insert(responseRows);
-
-      // Update quiz session status
-      await supabaseAdmin
-        .from("quiz_sessions")
-        .update({
-          status: "completed",
-          score: correctCount,
-          time_taken_ms: timeTakenMs || 0,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", sessionId);
-
-      // Fetch user profile to update streak & statistics
-      const { data: profile } = await supabaseAdmin
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
+      const { data: profile } = profileRes;
 
       if (profile) {
         const today = new Date().toISOString().split("T")[0];

@@ -42,19 +42,46 @@ export interface GenerateStudyPlanParams {
   weakTopics?: string[];
 }
 
-export async function generateQuiz(params: GenerateQuizParams): Promise<QuizSession> {
-  const res = await fetch("/api/quiz/generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(params),
-  });
+/**
+ * Shared fetch wrapper: JSON headers, request timeout (so slow requests can
+ * never hang the UI forever) and consistent error extraction.
+ */
+async function apiFetch<T>(
+  path: string,
+  init?: RequestInit & { timeoutMs?: number }
+): Promise<T> {
+  const { timeoutMs = 30_000, ...requestInit } = init ?? {};
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || "Failed to generate quiz");
+  try {
+    const res = await fetch(path, {
+      ...requestInit,
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...(requestInit.headers ?? {}),
+      },
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || `Request failed (${res.status})`);
+    }
+
+    return res.json();
+  } finally {
+    clearTimeout(timeout);
   }
+}
 
-  return res.json();
+export async function generateQuiz(params: GenerateQuizParams): Promise<QuizSession> {
+  // AI question generation legitimately takes longer than a normal API call.
+  return apiFetch<QuizSession>("/api/quiz/generate", {
+    method: "POST",
+    body: JSON.stringify(params),
+    timeoutMs: 90_000,
+  });
 }
 
 export async function submitQuiz(params: SubmitQuizParams): Promise<{
@@ -65,36 +92,21 @@ export async function submitQuiz(params: SubmitQuizParams): Promise<{
   status: string;
   timeTakenMs: number;
 }> {
-  const res = await fetch("/api/quiz/submit", {
+  return apiFetch("/api/quiz/submit", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
   });
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || "Failed to submit quiz session");
-  }
-
-  return res.json();
 }
 
 export async function explainQuestion(params: ExplainQuestionParams): Promise<{
   explanationEn: string;
   explanationUr: string;
 }> {
-  const res = await fetch("/api/quiz/explain", {
+  return apiFetch("/api/quiz/explain", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
+    timeoutMs: 90_000,
   });
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || "Failed to generate explanation");
-  }
-
-  return res.json();
 }
 
 export async function getDashboardStats(): Promise<{
@@ -103,30 +115,13 @@ export async function getDashboardStats(): Promise<{
   weakTopics: WeakTopic[];
   profile: UserProfile;
 }> {
-  const res = await fetch("/api/dashboard/stats", {
-    method: "GET",
-    headers: { "Content-Type": "application/json" },
-  });
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || "Failed to fetch dashboard stats");
-  }
-
-  return res.json();
+  return apiFetch("/api/dashboard/stats", { method: "GET" });
 }
 
 export async function generateStudyPlan(params: GenerateStudyPlanParams): Promise<StudyPlan> {
-  const res = await fetch("/api/study-plan/generate", {
+  return apiFetch("/api/study-plan/generate", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
+    timeoutMs: 90_000,
   });
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || "Failed to generate study plan");
-  }
-
-  return res.json();
 }

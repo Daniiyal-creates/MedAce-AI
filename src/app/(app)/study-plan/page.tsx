@@ -1,10 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import AppLayout from "@/components/layout/AppLayout";
-import { Card, Badge, Button, Input, Modal, Select } from "@/components/ui";
+import { useState, useEffect, useMemo } from "react";
+import { Card, Badge, Button, Input, Modal, Select, Skeleton } from "@/components/ui";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import {
   Sparkles,
   CheckCircle,
@@ -18,7 +16,6 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/components/auth/AuthProvider";
 import {
   getStoredStudyPlan,
   generateCurrentWeekStudyPlan,
@@ -28,19 +25,18 @@ import { generateStudyPlan } from "@/lib/api-client";
 import type { StudyPlan } from "@/types/quiz";
 
 export default function StudyPlanPage() {
-  const { user } = useAuth();
   const [plan, setPlan] = useState<StudyPlan | null>(null);
   const [selectedDayIdx, setSelectedDayIdx] = useState<number>(0);
   const [targetExamDate, setTargetExamDate] = useState("2026-11-15");
   const [showGeneratorModal, setShowGeneratorModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  // Load stored plan (or generate one for the current week) exactly once.
+  // Until this resolves we render a skeleton instead of regenerating the
+  // plan on every render.
   useEffect(() => {
-    // Load stored plan or generate clean plan for current week
-    let existing = getStoredStudyPlan();
-    if (!existing || !existing.days || existing.days.length === 0) {
-      existing = generateCurrentWeekStudyPlan(targetExamDate);
-    }
+    const existing =
+      getStoredStudyPlan() ?? generateCurrentWeekStudyPlan(targetExamDate);
     setPlan(existing);
 
     // Default selected day to Today if present, otherwise Day 0
@@ -52,7 +48,7 @@ export default function StudyPlanPage() {
   }, []);
 
   // Calculate days remaining until exam
-  const calculateDaysLeft = () => {
+  const daysLeft = useMemo(() => {
     try {
       const exam = new Date(targetExamDate);
       const now = new Date();
@@ -62,7 +58,7 @@ export default function StudyPlanPage() {
     } catch {
       return 60;
     }
-  };
+  }, [targetExamDate]);
 
   const handleRegeneratePlan = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,31 +73,50 @@ export default function StudyPlanPage() {
         setPlan(newPlan);
         saveStoredStudyPlan(newPlan);
       } else {
-        const localNew = generateCurrentWeekStudyPlan(targetExamDate);
-        setPlan(localNew);
+        setPlan(generateCurrentWeekStudyPlan(targetExamDate));
       }
     } catch {
-      const localNew = generateCurrentWeekStudyPlan(targetExamDate);
-      setPlan(localNew);
+      setPlan(generateCurrentWeekStudyPlan(targetExamDate));
     } finally {
       setIsGenerating(false);
       setShowGeneratorModal(false);
     }
   };
 
-  const userName = user?.fullName || "Medical Student";
-  const daysLeft = calculateDaysLeft();
-  const currentPlan = plan || generateCurrentWeekStudyPlan();
+  if (!plan) {
+    return (
+      <div>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-72" />
+            <Skeleton className="h-4 w-52" />
+          </div>
+          <Skeleton className="h-10 w-40 rounded-xl" />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-8">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <Skeleton key={i} variant="card" className="h-36" />
+          ))}
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Skeleton variant="card" className="h-48" />
+          <Skeleton variant="card" className="h-48" />
+        </div>
+      </div>
+    );
+  }
+
+  const currentPlan = plan;
   const activeDay = currentPlan.days[selectedDayIdx] || currentPlan.days[0];
 
   return (
-    <AppLayout userName={userName}>
+    <div className="animate-fade-in">
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold">Your MDCAT Study Schedule</h1>
           <p className="text-sm text-muted mt-1">
-            Personalized weekly plan for {userName} &middot; Current Week
+            Personalized weekly plan &middot; Current Week
           </p>
         </div>
 
@@ -143,11 +158,8 @@ export default function StudyPlanPage() {
             const isSelected = idx === selectedDayIdx;
 
             return (
-              <motion.button
+              <button
                 key={day.day}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05, type: "spring", damping: 20 }}
                 onClick={() => setSelectedDayIdx(idx)}
                 className={cn(
                   "flex flex-col text-left rounded-xl border p-3 transition-all cursor-pointer",
@@ -193,7 +205,7 @@ export default function StudyPlanPage() {
                   <Clock className="h-3 w-3" />
                   {day.estimatedMinutes} mins
                 </div>
-              </motion.button>
+              </button>
             );
           })}
         </div>
@@ -329,6 +341,6 @@ export default function StudyPlanPage() {
           </div>
         </form>
       </Modal>
-    </AppLayout>
+    </div>
   );
 }

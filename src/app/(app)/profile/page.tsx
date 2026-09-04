@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import AppLayout from "@/components/layout/AppLayout";
 import { Card, Badge, Button, Input, Modal, Avatar } from "@/components/ui";
 import { motion } from "framer-motion";
 import {
@@ -15,22 +14,23 @@ import {
   LogOut,
   Check,
 } from "lucide-react";
-import { cn, formatDate, getScoreBgColor } from "@/lib/utils";
+import { cn, getScoreBgColor } from "@/lib/utils";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { calculateProgressStats } from "@/lib/progress-tracker";
-import { getDashboardStats } from "@/lib/api-client";
+import {
+  useDashboardStats,
+  EMPTY_DASHBOARD_DATA,
+} from "@/lib/use-dashboard-stats";
 import { useRouter } from "next/navigation";
 
 export default function ProfilePage() {
   const router = useRouter();
   const { user, signOut, updateUser } = useAuth();
+  const { data } = useDashboardStats();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [savedSuccess, setSavedSuccess] = useState(false);
-
-  const [statsData, setStatsData] = useState(() => calculateProgressStats());
 
   useEffect(() => {
     if (user) {
@@ -38,30 +38,6 @@ export default function ProfilePage() {
       setEditEmail(user.email || "");
     }
   }, [user]);
-
-  useEffect(() => {
-    async function loadStats() {
-      try {
-        const apiData = await getDashboardStats();
-        if (apiData?.profile) {
-          setStatsData({
-            stats: apiData.stats,
-            recentSessions: apiData.recentSessions,
-            weakTopics: apiData.weakTopics,
-            chapterPerformance: apiData.profile.chapterPerformance || [],
-            bestTopic: apiData.profile.bestTopic || "N/A",
-            worstTopic: apiData.profile.worstTopic || "N/A",
-          });
-          return;
-        }
-      } catch {
-        // Fallback
-      }
-      setStatsData(calculateProgressStats());
-    }
-
-    loadStats();
-  }, []);
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,17 +57,13 @@ export default function ProfilePage() {
 
   const fullName = user?.fullName || "Medical Student";
   const email = user?.email || "student@medace.ai";
-  const { stats, chapterPerformance, bestTopic, worstTopic } = statsData;
+  const { stats, chapterPerformance, bestTopic, worstTopic } =
+    data ?? EMPTY_DASHBOARD_DATA;
 
   return (
-    <AppLayout userName={fullName}>
+    <div className="animate-fade-in">
       {/* Profile Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", damping: 20 }}
-      >
-        <Card padding="lg" className="mb-8">
+      <Card padding="lg" className="mb-8">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
           <Avatar name={fullName} size="lg" />
           <div className="text-center sm:text-left flex-1">
@@ -99,7 +71,7 @@ export default function ProfilePage() {
             <p className="text-sm text-muted">{email}</p>
             <p className="text-xs text-muted mt-1 flex items-center gap-1 justify-center sm:justify-start">
               <Calendar className="h-3 w-3" />
-              Logged in via {user?.provider === "google" ? "Google OAuth" : "Email"}
+              Logged in via Email
             </p>
           </div>
           <div className="flex flex-wrap gap-2 justify-center sm:justify-end">
@@ -130,7 +102,6 @@ export default function ProfilePage() {
           </div>
         )}
       </Card>
-      </motion.div>
 
       {/* Edit Profile Form */}
       {isEditing && (
@@ -178,25 +149,18 @@ export default function ProfilePage() {
             { icon: Trophy, label: "Best Topic", value: bestTopic, color: "text-success", small: true },
             { icon: TrendingDown, label: "Needs Work", value: worstTopic, color: "text-error", small: true },
             { icon: Flame, label: "Study Streak", value: `${stats.studyStreak} days`, color: "text-warning" },
-          ].map((stat, i) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08, type: "spring", damping: 20 }}
-            >
-              <Card hoverable padding="md">
-                <div className="flex items-center gap-2 mb-2">
-                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
-                  <span className="text-xs text-muted">{stat.label}</span>
-                </div>
-                {stat.small ? (
-                  <p className="text-sm font-semibold truncate">{stat.value}</p>
-                ) : (
-                  <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-                )}
-              </Card>
-            </motion.div>
+          ].map((stat) => (
+            <Card key={stat.label} hoverable padding="md">
+              <div className="flex items-center gap-2 mb-2">
+                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                <span className="text-xs text-muted">{stat.label}</span>
+              </div>
+              {stat.small ? (
+                <p className="text-sm font-semibold truncate">{stat.value}</p>
+              ) : (
+                <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+              )}
+            </Card>
           ))}
         </div>
       </div>
@@ -208,13 +172,7 @@ export default function ProfilePage() {
           <Card padding="md">
             <div className="space-y-3">
               {chapterPerformance.map((ch, i) => (
-                <motion.div
-                  key={ch.chapter}
-                  className="flex items-center gap-3"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.04 }}
-                >
+                <div key={ch.chapter} className="flex items-center gap-3">
                   <span className="text-xs text-muted w-48 shrink-0 truncate">
                     {ch.chapter}
                   </span>
@@ -226,7 +184,7 @@ export default function ProfilePage() {
                       )}
                       initial={{ width: 0 }}
                       animate={{ width: `${ch.accuracy}%` }}
-                      transition={{ type: "spring", damping: 30, stiffness: 100, delay: 0.2 + i * 0.03 }}
+                      transition={{ type: "spring", damping: 30, stiffness: 100, delay: 0.1 + i * 0.03 }}
                     />
                   </div>
                   <span
@@ -241,7 +199,7 @@ export default function ProfilePage() {
                   >
                     {ch.accuracy}%
                   </span>
-                </motion.div>
+                </div>
               ))}
             </div>
           </Card>
@@ -297,6 +255,6 @@ export default function ProfilePage() {
           </div>
         </div>
       </Modal>
-    </AppLayout>
+    </div>
   );
 }

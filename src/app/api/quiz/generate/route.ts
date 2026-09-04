@@ -22,6 +22,14 @@ export async function POST(req: NextRequest) {
     const { chapter, topic, difficulty, count } = validation.data;
     const chapterNum = parseChapterNumber(chapter);
 
+    // Kick off the auth check immediately — it resolves in the background
+    // while the (slow) embedding + AI generation work runs.
+    const userPromise = (async () => {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      return user;
+    })();
+
     let generatedQuestions: Question[] = [];
     const sessionId = crypto.randomUUID();
     let chunkIds: string[] = [];
@@ -135,10 +143,10 @@ Return JSON in this EXACT schema format:
     }
 
     // 4. Save session to database if authenticated
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await userPromise;
 
     if (user) {
+      // Insert the session row first (quiz_questions rows reference it via FK)
       await supabaseAdmin.from("quiz_sessions").insert({
         id: sessionId,
         user_id: user.id,

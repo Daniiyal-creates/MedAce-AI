@@ -1,5 +1,5 @@
 import type { StudyPlan } from "@/types/quiz";
-import { mockTopics } from "@/lib/mock-data";
+import { mdcTopics } from "@/lib/topics";
 import { calculateProgressStats } from "@/lib/progress-tracker";
 
 const STORAGE_KEY = "medace_active_study_plan";
@@ -59,10 +59,10 @@ export function generateCurrentWeekStudyPlan(targetExamDateStr?: string): StudyP
     const isPast = d < now && !isToday;
 
     // Pick 1-2 distinct topics for this day
-    const primaryTopic = pool[idx % pool.length] || mockTopics[idx % mockTopics.length].name;
-    let secondaryTopic = mockTopics[(idx + 4) % mockTopics.length].name;
+    const primaryTopic = pool[idx % pool.length] || mdcTopics[idx % mdcTopics.length].name;
+    let secondaryTopic = mdcTopics[(idx + 4) % mdcTopics.length].name;
     if (secondaryTopic === primaryTopic) {
-      secondaryTopic = mockTopics[(idx + 5) % mockTopics.length].name;
+      secondaryTopic = mdcTopics[(idx + 5) % mdcTopics.length].name;
     }
     const rawTopics = idx % 2 === 0 ? [primaryTopic] : [primaryTopic, secondaryTopic];
     const topics = Array.from(new Set(rawTopics));
